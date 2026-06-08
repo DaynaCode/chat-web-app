@@ -6,7 +6,8 @@ export interface IMessageSender {
 
 export interface IMessage {
     id: number;
-    conversationId: number;
+    conversation: number;
+    conversationId?: number;
     sender: IMessageSender;
     text: string | null;
     image: string | null;

@@ -85,7 +85,14 @@ const messageText = ref('');
 const showProfile = ref(false);
 const onlineUserIds = ref<number[]>([]);
 
-const messages = computed<IMessage[]>(() => messagesPage.value?.results ?? []);
+const messages = computed<IMessage[]>(() => {
+  const data = messagesPage.value;
+  if (!data) return [];
+  // API returns plain array
+  if (Array.isArray(data)) return data;
+  // fallback if wrapped
+  return (data as any).results ?? [];
+});
 
 const currentConversation = computed(() =>
   conversations.value?.find((c) => c.id === conversationId.value)
@@ -116,14 +123,15 @@ const isOnline = computed(() =>
 function addMessage(msg: IMessage) {
   queryClient.setQueryData(
     ['messages', conversationId.value],
-    (old: { results: IMessage[]; nextCursor: string | null } | undefined) => {
-      if (!old) return { results: [msg], nextCursor: null };
-      const exists = old.results.some(
-        (m) => m.id === msg.id ||
+    (old: IMessage[] | undefined) => {
+      const list = Array.isArray(old) ? old : (old as any)?.results ?? [];
+      const exists = list.some(
+        (m: IMessage) =>
+          m.id === msg.id ||
           (msg.clientMessageId && m.clientMessageId === msg.clientMessageId)
       );
-      if (exists) return old;
-      return { ...old, results: [...old.results, msg] };
+      if (exists) return list;
+      return [...list, msg];
     }
   );
 }
@@ -146,8 +154,8 @@ function sendMsg() {
     // optimistic: add message immediately, server broadcast will dedup by clientMessageId
     if (clientMessageId) {
       addMessage({
-        id: -Date.now(), // temp negative id
-        conversationId: conversationId.value,
+        id: -Date.now(),
+        conversation: conversationId.value,
         sender: { id: myId.value, username: '' },
         text,
         image: null,

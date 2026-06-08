@@ -20,7 +20,7 @@ export const useMessages = (conversationId: Ref<number> | number) => {
         queryKey: computed(() => ['messages', idRef.value]),
         queryFn: () =>
             api
-                .get<IMessagesPage>(`/conversations/${idRef.value}/messages/`, {
+                .get<IMessage[]>(`/conversations/${idRef.value}/messages/`, {
                     params: { limit: 30 },
                 })
                 .then((res) => res.data),
@@ -39,13 +39,13 @@ export const useSendMessageRest = (conversationId: Ref<number> | number) => {
         onSuccess: (newMsg) => {
             queryClient.setQueryData(
                 ['messages', idRef.value],
-                (old: IMessagesPage | undefined) => {
-                    if (!old) return { results: [newMsg], nextCursor: null };
-                    const exists = old.results.some(
+                (old: IMessage[] | undefined) => {
+                    if (!old) return [newMsg];
+                    const exists = old.some(
                         (m) => m.id === newMsg.id || m.clientMessageId === newMsg.clientMessageId
                     );
                     if (exists) return old;
-                    return { ...old, results: [...old.results, newMsg] };
+                    return [...old, newMsg];
                 }
             );
         },

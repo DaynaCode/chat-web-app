@@ -9,7 +9,7 @@
         :key="msg.id"
         :message="msg.text ?? ''"
         :time="formatTime(msg.createdAt)"
-        :isMe="msg.sender.id === myId"
+        :isMe="Number(msg.sender.id) === myId"
         :senderId="msg.sender.id"
       />
     </template>
@@ -30,7 +30,7 @@ const props = defineProps<{
 }>();
 
 const { jwt } = useJwtService();
-const myId = computed(() => jwt.value?.userId ?? 0);
+const myId = computed(() => Number(jwt.value?.userId ?? 0));
 const listEl = ref<HTMLElement | null>(null);
 
 function formatTime(iso: string): string {

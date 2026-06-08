@@ -24,11 +24,15 @@ function getToken(): string {
 
 // Normalize WS message: handle both camelCase and snake_case from server
 function normalizeMessage(raw: Record<string, any>): IMessage {
-    const conversationId = Number(raw.conversationId ?? raw.conversation_id ?? 0);
+    // server may use: conversationId, conversation_id, or conversation (FK int)
+    const conversation = Number(
+        raw.conversationId ?? raw.conversation_id ?? raw.conversation ?? 0
+    );
     const sender = raw.sender ?? {};
     return {
         id: raw.id,
-        conversationId,
+        conversation,
+        conversationId: conversation,
         sender: {
             id: Number(sender.id ?? 0),
             username: sender.username ?? '',
@@ -46,7 +50,7 @@ function normalizeMessage(raw: Record<string, any>): IMessage {
 
 function dispatchMessage(raw: Record<string, any>) {
     const msg = normalizeMessage(raw);
-    const handlers = messageListeners.get(msg.conversationId);
+    const handlers = messageListeners.get(msg.conversation);
     if (handlers) {
         handlers.forEach((h) => h(msg));
     }
