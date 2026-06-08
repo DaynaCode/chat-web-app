@@ -40,11 +40,11 @@ const props = defineProps<{
 }>();
 
 const { jwt } = useJwtService();
-const myId = computed(() => jwt.value?.userId ?? 0);
+const myId = computed(() => Number(jwt.value?.userId ?? 0));
 
 const otherParticipant = computed(() => {
   if (props.conversation.type === 'private') {
-    return props.conversation.participants.find((p) => p.id !== myId.value) ?? null;
+    return props.conversation.participants.find((p) => Number(p.id) !== myId.value) ?? null;
   }
   return null;
 });

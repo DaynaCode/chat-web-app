@@ -18,11 +18,10 @@
     <div class="w-full bg-white shadow-2xl p-3 flex items-start gap-2 border-t border-gray-200 shrink-0">
       <button
         @click="sendMsg"
-        :disabled="!messageText.trim() || isSending"
+        :disabled="!messageText.trim()"
         class="w-10 h-10 bg-primary-800 rounded-full flex justify-center items-center cursor-pointer shrink-0 disabled:opacity-50"
       >
-        <span v-if="isSending" class="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-        <IsIcon v-else name="send" class="rotate-90" />
+        <IsIcon name="send" class="rotate-90" />
       </button>
       <div class="flex-1">
         <Textarea
@@ -52,6 +51,7 @@
           <Avatar :label="conversationLabel.substring(0, 2)" class="text-xl! bg-blue-100 text-blue-600" shape="circle" size="xlarge" />
           <div class="text-center">
             <p class="text-lg font-bold text-gray-900">{{ conversationLabel }}</p>
+            <p v-if="otherUsername" class="text-sm text-gray-400">@{{ otherUsername }}</p>
           </div>
         </div>
       </div>
@@ -63,7 +63,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
-import { useMessages, useSendMessage } from '@/api/conversations';
+import { useMessages, useSendMessageRest } from '@/api/conversations';
 import { useConversations } from '@/api/conversations';
 import { useWebSocket } from '@/composables/useWebSocket';
 import { useJwtService } from '@/composables/useJwtService';
@@ -73,12 +73,12 @@ const route = useRoute();
 const conversationId = computed(() => Number(route.params.id));
 
 const { jwt } = useJwtService();
-const myId = computed(() => jwt.value?.userId ?? 0);
+const myId = computed(() => Number(jwt.value?.userId ?? 0));
 
-const { data: messagesPage, isLoading } = useMessages(conversationId.value);
+const { data: messagesPage, isLoading } = useMessages(conversationId);
 const { data: conversations } = useConversations();
-const { mutate: sendMessage, isPending: isSending } = useSendMessage(conversationId.value);
-const { onMessage, offMessage, onStatus, offStatus } = useWebSocket();
+const { mutate: sendMessageRest } = useSendMessageRest(conversationId);
+const { onMessage, offMessage, onStatus, offStatus, sendMessage: wsSend, isConnected } = useWebSocket();
 const queryClient = useQueryClient();
 
 const messageText = ref('');
@@ -91,32 +91,37 @@ const currentConversation = computed(() =>
   conversations.value?.find((c) => c.id === conversationId.value)
 );
 
+const otherParticipant = computed(() => {
+  const conv = currentConversation.value;
+  if (!conv || conv.type !== 'private') return null;
+  // cast both to Number to avoid type mismatch
+  return conv.participants.find((p) => Number(p.id) !== myId.value) ?? null;
+});
+
 const conversationLabel = computed(() => {
   const conv = currentConversation.value;
   if (!conv) return '...';
   if (conv.type === 'group') return conv.group?.name ?? 'گروه';
-  const other = conv.participants.find((p) => p.id !== myId.value);
+  const other = otherParticipant.value;
   return other?.displayName || other?.username || 'کاربر';
 });
 
-const otherParticipantId = computed(() => {
-  const conv = currentConversation.value;
-  if (!conv || conv.type !== 'private') return null;
-  return conv.participants.find((p) => p.id !== myId.value)?.id ?? null;
-});
+const otherUsername = computed(() => otherParticipant.value?.username ?? null);
 
 const isOnline = computed(() =>
-  otherParticipantId.value != null &&
-  onlineUserIds.value.includes(otherParticipantId.value)
+  otherParticipant.value != null &&
+  onlineUserIds.value.includes(Number(otherParticipant.value.id))
 );
 
-function handleNewMessage(msg: IMessage) {
+function addMessage(msg: IMessage) {
   queryClient.setQueryData(
     ['messages', conversationId.value],
     (old: { results: IMessage[]; nextCursor: string | null } | undefined) => {
       if (!old) return { results: [msg], nextCursor: null };
-      // avoid duplicates
-      const exists = old.results.some((m) => m.id === msg.id);
+      const exists = old.results.some(
+        (m) => m.id === msg.id ||
+          (msg.clientMessageId && m.clientMessageId === msg.clientMessageId)
+      );
       if (exists) return old;
       return { ...old, results: [...old.results, msg] };
     }
@@ -135,23 +140,37 @@ function sendMsg() {
   const text = messageText.value.trim();
   if (!text) return;
   messageText.value = '';
-  sendMessage({ text });
+
+  if (isConnected.value) {
+    // send via WebSocket — server will broadcast new_message back to us
+    wsSend({ conversationId: conversationId.value, text });
+  } else {
+    // fallback: REST API, add to list manually
+    sendMessageRest({ text }, { onSuccess: (msg) => addMessage(msg) });
+  }
+}
+
+function registerWsHandlers(id: number) {
+  onMessage(id, addMessage);
+}
+
+function unregisterWsHandlers(id: number) {
+  offMessage(id, addMessage);
 }
 
 onMounted(() => {
-  onMessage(conversationId.value, handleNewMessage);
+  registerWsHandlers(conversationId.value);
   onStatus(handleStatus);
 });
 
 onUnmounted(() => {
-  offMessage(conversationId.value, handleNewMessage);
+  unregisterWsHandlers(conversationId.value);
   offStatus(handleStatus);
 });
 
-// reload messages when conversation changes
-watch(conversationId, () => {
-  offMessage(conversationId.value, handleNewMessage);
-  onMessage(conversationId.value, handleNewMessage);
+watch(conversationId, (newId, oldId) => {
+  unregisterWsHandlers(oldId);
+  registerWsHandlers(newId);
 });
 </script>
 
