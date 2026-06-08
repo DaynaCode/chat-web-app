@@ -1,0 +1,2037 @@
+openapi: 3.0.3
+info:
+  title: پیام‌رسان داخلی
+  version: 1.0.0
+  description: API سامانه پیام‌رسان
+paths:
+  /api/auth/login/:
+    post:
+      operationId: authLoginCreate
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInputRequest'
+            examples:
+              ورودموفق:
+                value:
+                  username: admin
+                  password: admin123
+                summary: ورود موفق
+                description: نام کاربری و رمز عبور صحیح
+              ورودناموفق:
+                value:
+                  username: admin
+                  password: wrongpass
+                summary: ورود ناموفق
+                description: نام کاربری یا رمز عبور اشتباه
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginInputRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginSuccess'
+              examples:
+                پاسخموفق:
+                  value:
+                    detail: Login successful.
+                    faMessage: با موفقیت وارد شدید.
+                    access: eyJhbGciOiJIUzI1NiIs...
+                    refresh: eyJhbGciOiJIUzI1NiIs...
+                  summary: پاسخ موفق
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginBadRequest'
+              examples:
+                فیلدهاینامعتبر:
+                  value:
+                    detail: This field is required.
+                    faMessage: این فیلد الزامی است.
+                  summary: فیلدهای نامعتبر
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginUnauthorized'
+              examples:
+                خطایاحراز:
+                  value:
+                    detail: Username or password is incorrect.
+                    faMessage: نام کاربری یا رمز عبور نادرست است.
+                  summary: خطای احراز
+          description: ''
+  /api/auth/logout/:
+    post:
+      operationId: authLogoutCreate
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequestRequest'
+            examples:
+              خروجکاربر:
+                value:
+                  refresh: eyJhbGciOiJIUzI1NiIs...
+                summary: خروج کاربر
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LogoutRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LogoutRequestRequest'
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutSuccess'
+              examples:
+                خروجموفق:
+                  value:
+                    detail: Successfully logged out.
+                  summary: خروج موفق
+          description: ''
+  /api/auth/me/:
+    get:
+      operationId: authMeRetrieve
+      tags:
+      - auth
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              examples:
+                اطلاعاتکاربر:
+                  value:
+                    id: 1
+                    username: admin
+                    isActive: true
+                    isStaff: true
+                    displayName: مدیر سیستم
+                  summary: اطلاعات کاربر
+          description: ''
+  /api/auth/refresh/:
+    post:
+      operationId: authRefreshCreate
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequestRequest'
+            examples:
+              درخواسترفرش:
+                value:
+                  refresh: eyJhbGciOiJIUzI1NiIs...
+                summary: درخواست رفرش
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RefreshRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RefreshRequestRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshSuccess'
+              examples:
+                توکنجدید:
+                  value:
+                    access: eyJhbGciOiJIUzI1NiIs...
+                  summary: توکن جدید
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshError'
+              examples:
+                توکننامعتبر:
+                  value:
+                    detail: Invalid token.
+                    faMessage: توکن نامعتبر است.
+                  summary: توکن نامعتبر
+          description: ''
+  /api/conversations/:
+    get:
+      operationId: conversationsList
+      tags:
+      - conversations
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Conversation'
+              examples:
+                لیستمکالمات:
+                  value:
+                  - - id: 1
+                      type: private
+                      participants:
+                      - id: 1
+                        username: admin
+                        displayName: مدیر
+                      - id: 2
+                        username: user1
+                        displayName: کاربر عادی
+                      lastMessage:
+                        id: 10
+                        text: سلام
+                        sender:
+                          id: 1
+                          username: admin
+                        createdAt: '2026-05-30T10:00:00Z'
+                      createdAt: '2026-05-30T09:00:00Z'
+                    - id: 2
+                      type: group
+                      group:
+                        id: 1
+                        name: گروه برنامه‌نویسی
+                        owner: 1
+                        memberCount: 15
+                      lastMessage:
+                        id: 25
+                        text: خوش آمدید!
+                        sender:
+                          id: 1
+                          username: admin
+                        createdAt: '2026-05-30T09:30:00Z'
+                      createdAt: '2026-05-29T08:00:00Z'
+                  summary: لیست مکالمات
+          description: ''
+    post:
+      operationId: conversationsCreate
+      tags:
+      - conversations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateConversationRequest'
+            examples:
+              چتخصوصی:
+                value:
+                  type: private
+                  userId: 2
+                summary: چت خصوصی
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateConversationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreateConversationRequest'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+              examples:
+                مکالمهایجادشده:
+                  value:
+                    id: 3
+                    type: private
+                    participants:
+                    - id: 1
+                      username: admin
+                    - id: 2
+                      username: user1
+                    createdAt: '2026-05-30T10:05:00Z'
+                  summary: مکالمه ایجادشده
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationError'
+          description: ''
+  /api/conversations/{conversationId}/messages/:
+    get:
+      operationId: conversationsMessagesList
+      parameters:
+      - in: path
+        name: conversationId
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: cursor
+        schema:
+          type: integer
+        description: شناسه آخرین پیام
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: تعداد پیام‌ها (پیش‌فرض ۲۰)
+      tags:
+      - conversations
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+              examples:
+                پیام‌هاییکمکالمه:
+                  value:
+                  - - id: 100
+                      conversation: 1
+                      sender:
+                        id: 1
+                        username: admin
+                      text: سلام
+                      image: null
+                      createdAt: '2026-05-30T10:00:00Z'
+                  summary: پیام‌های یک مکالمه
+          description: ''
+    post:
+      operationId: conversationsMessagesCreate
+      parameters:
+      - in: path
+        name: conversationId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - conversations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+            examples:
+              ارسالمتنساده:
+                value:
+                  text: سلام!
+                summary: ارسال متن ساده
+              ارسالپاسخ(ریپلای):
+                value:
+                  text: پاسخ شما
+                  repliedToId: 5
+                summary: ارسال پاسخ (ریپلای)
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              examples:
+                پیامارسال‌شده:
+                  value:
+                    id: 101
+                    conversation: 1
+                    sender:
+                      id: 1
+                      username: admin
+                    text: سلام!
+                    image: null
+                    createdAt: '2026-05-30T10:01:00Z'
+                  summary: پیام ارسال‌شده
+          description: ''
+        '403':
+          description: عدم عضویت
+        '400':
+          description: خطای اعتبارسنجی
+  /api/conversations/{conversationId}/pins/:
+    get:
+      operationId: conversationsPinsList
+      parameters:
+      - in: path
+        name: conversationId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - conversations
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+              examples:
+                پین‌ها:
+                  value:
+                  - - id: 42
+                      text: مهم
+                      sender:
+                        id: 1
+                        username: admin
+          description: ''
+    post:
+      operationId: conversationsPinsCreate
+      parameters:
+      - in: path
+        name: conversationId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - conversations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PinMessageRequest'
+            examples:
+              پینکردن:
+                value:
+                  messageId: 42
+                summary: پین کردن
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PinMessageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PinMessageRequest'
+        required: true
+      responses:
+        '201':
+          description: No response body
+  /api/conversations/{conversationId}/pins/{id}/:
+    delete:
+      operationId: conversationsPinsDestroy
+      parameters:
+      - in: path
+        name: conversationId
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - conversations
+      responses:
+        '204':
+          description: No response body
+  /api/conversations/{id}/:
+    get:
+      operationId: conversationsRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - conversations
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+          description: ''
+        '403':
+          description: عدم عضویت
+  /api/conversations/{id}/search/:
+    get:
+      operationId: conversationsSearchRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: عبارت جستجو
+      tags:
+      - conversations
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+              examples:
+                نتایججستجو:
+                  value:
+                  - - id: 42
+                      text: کجا هستی؟
+                      sender:
+                        id: 1
+                        username: admin
+                      createdAt: '2026-05-30T11:00:00Z'
+                  summary: نتایج جستجو
+          description: ''
+  /api/favorites/:
+    get:
+      operationId: favoritesList
+      tags:
+      - favorites
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Conversation'
+              examples:
+                علاقه‌مندی‌ها:
+                  value:
+                  - - id: 1
+                      type: private
+                      participants: []
+                      lastMessage: null
+          description: ''
+    post:
+      operationId: favoritesCreate
+      tags:
+      - favorites
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddFavoriteRequest'
+            examples:
+              افزودن:
+                value:
+                  conversationId: 1
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AddFavoriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AddFavoriteRequest'
+        required: true
+      responses:
+        '201':
+          description: No response body
+  /api/favorites/{id}/:
+    delete:
+      operationId: favoritesDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - favorites
+      responses:
+        '204':
+          description: No response body
+  /api/groups/:
+    get:
+      operationId: groupsList
+      tags:
+      - groups
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Group'
+              examples:
+                لیستگروه‌ها:
+                  value:
+                  - - id: 1
+                      name: گروه برنامه‌نویسی
+                      owner:
+                        id: 1
+                        username: admin
+                      memberCount: 15
+                      maxMembers: 50
+                      description: بحث در مورد برنامه‌نویسی
+                      groupImage: null
+                      createdAt: '2026-05-29T08:00:00Z'
+                  summary: لیست گروه‌ها
+          description: ''
+    post:
+      operationId: groupsCreate
+      tags:
+      - groups
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateGroupRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreateGroupRequest'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+              examples:
+                گروهایجادشده:
+                  value:
+                    id: 2
+                    name: گروه جدید
+                    owner:
+                      id: 1
+                      username: admin
+                    memberCount: 1
+                    maxMembers: 50
+                    description: null
+                    createdAt: '2026-05-30T12:00:00Z'
+                  summary: گروه ایجادشده
+          description: ''
+  /api/groups/{id}/:
+    get:
+      operationId: groupsRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - groups
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+          description: ''
+    put:
+      operationId: groupsUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - groups
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UpdateGroupRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UpdateGroupRequest'
+      responses:
+        '200':
+          description: No response body
+    patch:
+      operationId: groupsPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - groups
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPartialUpdateGroupRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPartialUpdateGroupRequest'
+      responses:
+        '200':
+          description: No response body
+    delete:
+      operationId: groupsDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - groups
+      responses:
+        '204':
+          description: No response body
+        '403':
+          description: فقط مالک
+  /api/groups/{id}/add_member/:
+    post:
+      operationId: groupsAddMemberCreate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - groups
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AddMemberRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AddMemberRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddMemberResponse'
+              examples:
+                موفق:
+                  value:
+                    detail: Member added.
+                    faMessage: عضو اضافه شد.
+          description: ''
+        '400':
+          description: خطا
+  /api/groups/{id}/remove_member/{userId}/:
+    delete:
+      operationId: groupsRemoveMemberDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: userId
+        schema:
+          type: string
+        required: true
+      tags:
+      - groups
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RemoveMemberResponse'
+              examples:
+                موفق:
+                  value:
+                    detail: Member removed.
+                    faMessage: عضو حذف شد.
+          description: ''
+  /api/logo/:
+    get:
+      operationId: logoRetrieve
+      tags:
+      - logo
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/messages/{id}/:
+    get:
+      operationId: messagesRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - messages
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+    put:
+      operationId: messagesUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - messages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditMessageRequest'
+            examples:
+              ویرایشمتن:
+                value:
+                  text: متن جدید
+                summary: ویرایش متن
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EditMessageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EditMessageRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              examples:
+                پیامویرایش‌شده:
+                  value:
+                    id: 100
+                    conversation: 1
+                    sender:
+                      id: 1
+                      username: admin
+                    text: متن جدید
+                    editedAt: '2026-05-30T10:05:00Z'
+                    createdAt: '2026-05-30T10:00:00Z'
+                  summary: پیام ویرایش‌شده
+          description: ''
+        '403':
+          description: غیرمجاز
+    patch:
+      operationId: messagesPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - messages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPartialEditMessageRequest'
+            examples:
+              ویرایشجزئی:
+                value:
+                  text: ویرایش جزئی
+                summary: ویرایش جزئی
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPartialEditMessageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPartialEditMessageRequest'
+      responses:
+        '200':
+          description: No response body
+    delete:
+      operationId: messagesDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - messages
+      responses:
+        '204':
+          description: No response body
+        '403':
+          description: غیرمجاز
+  /api/mutes/:
+    post:
+      operationId: mutesCreate
+      tags:
+      - mutes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MuteConversationRequest'
+            examples:
+              میوت:
+                value:
+                  conversationId: 1
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MuteConversationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MuteConversationRequest'
+        required: true
+      responses:
+        '201':
+          description: No response body
+  /api/mutes/{id}/:
+    delete:
+      operationId: mutesDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - mutes
+      responses:
+        '204':
+          description: No response body
+  /api/profile/:
+    get:
+      operationId: profileRetrieve
+      tags:
+      - profile
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+              examples:
+                پروفایلکاربر:
+                  value:
+                    displayName: مدیر ارشد
+                    bio: سلام، من مدیر هستم.
+                    avatar: /media/avatars/abc.jpg
+                  summary: پروفایل کاربر
+          description: ''
+    patch:
+      operationId: profilePartialUpdate
+      tags:
+      - profile
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProfileRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProfileRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+              examples:
+                پروفایلبه‌روزرسانی‌شده:
+                  value:
+                    displayName: نام جدید
+                    bio: توضیحات جدید
+                    avatar: /media/avatars/abc.jpg
+                  summary: پروفایل به‌روزرسانی‌شده
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileError'
+          description: ''
+  /api/public-users/:
+    get:
+      operationId: publicUsersList
+      tags:
+      - public-users
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PublicUser'
+              examples:
+                کاربرانعمومی:
+                  value:
+                  - - id: 1
+                      username: admin
+                      displayName: مدیر
+                    - id: 2
+                      username: user1
+                      displayName: کاربر
+                  summary: کاربران عمومی
+          description: ''
+  /api/public-users/{id}/:
+    get:
+      operationId: publicUsersRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - public-users
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicUser'
+          description: ''
+  /api/read-receipts/:
+    post:
+      operationId: readReceiptsCreate
+      tags:
+      - read-receipts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkReadRequest'
+            examples:
+              علامت‌گذاریخوانده‌شده:
+                value:
+                  messageIds:
+                  - 1
+                  - 2
+                  - 3
+                summary: علامت‌گذاری خوانده‌شده
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MarkReadRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MarkReadRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarkReadResponse'
+              examples:
+                موفق:
+                  value:
+                    detail: Marked as read.
+          description: ''
+        '404':
+          description: پیام یافت نشد
+  /api/read-receipts/unread_counts/:
+    get:
+      operationId: readReceiptsUnreadCountsRetrieve
+      tags:
+      - read-receipts
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnreadCounts'
+              examples:
+                تعدادخوانده‌نشده:
+                  value:
+                  - conversationId: 1
+                    unread: 5
+                  - conversationId: 2
+                    unread: 0
+                  summary: تعداد خوانده‌نشده
+          description: ''
+  /api/schema/:
+    get:
+      operationId: schemaRetrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - ckb
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - schema
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/upload/:
+    post:
+      operationId: uploadFile
+      description: آپلود تصویر (فقط JPEG و PNG با حداکثر حجم ۲MB)
+      tags:
+      - upload
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: فایل تصویر (jpg, png)
+              required:
+              - file
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadSuccess'
+              examples:
+                موفقیت:
+                  value:
+                    id: 42
+                    url: /media/uploaded_images/abc123.jpg
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadError'
+              examples:
+                فایلنامعتبر:
+                  value:
+                    detail: Invalid file type.
+                  summary: فایل نامعتبر
+                حجمبیشازحد:
+                  value:
+                    detail: File too large.
+                  summary: حجم بیش از حد
+          description: ''
+  /api/users/:
+    get:
+      operationId: usersList
+      tags:
+      - users
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+              examples:
+                لیستکاربران:
+                  value:
+                  - - id: 1
+                      username: admin
+                      isActive: true
+                      isStaff: true
+                      displayName: مدیر سیستم
+                    - id: 2
+                      username: user1
+                      isActive: true
+                      isStaff: false
+                      displayName: کاربر عادی
+                  summary: لیست کاربران
+          description: ''
+    post:
+      operationId: usersCreate
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+            examples:
+              ایجادکاربر:
+                value:
+                  username: newuser
+                  password: securepass123
+                  isActive: true
+                summary: ایجاد کاربر
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              examples:
+                کاربرایجادشده:
+                  value:
+                    id: 3
+                    username: newuser
+                    isActive: true
+                    isStaff: false
+                    displayName: ''
+                  summary: کاربر ایجادشده
+          description: ''
+  /api/users/{id}/:
+    get:
+      operationId: usersRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - users
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              examples:
+                جزئیاتکاربر:
+                  value:
+                    id: 2
+                    username: user1
+                    isActive: false
+                    isStaff: false
+                    displayName: کاربر
+                  summary: جزئیات کاربر
+          description: ''
+    put:
+      operationId: usersUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+            examples:
+              ویرایشکاربر:
+                value:
+                  isActive: false
+                  password: newpass456
+                summary: ویرایش کاربر
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: usersPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdateRequest'
+            examples:
+              ویرایشجزئی:
+                value:
+                  isActive: false
+                summary: ویرایش جزئی
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdateRequest'
+      responses:
+        '200':
+          description: No response body
+    delete:
+      operationId: usersDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - users
+      responses:
+        '204':
+          description: No response body
+  /api/users/{id}/activate/:
+    post:
+      operationId: usersActivateCreate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - users
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              examples:
+                فعال‌سازی:
+                  value:
+                    id: 2
+                    username: user1
+                    isActive: true
+                    displayName: ''
+          description: ''
+  /api/users/{id}/deactivate/:
+    post:
+      operationId: usersDeactivateCreate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - users
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              examples:
+                غیرفعال‌سازی:
+                  value:
+                    id: 2
+                    username: user1
+                    isActive: false
+                    displayName: ''
+          description: ''
+  /api/users/{id}/reset_password/:
+    post:
+      operationId: usersResetPasswordCreate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+            examples:
+              ریسترمز:
+                value:
+                  newPassword: newSecurePass789
+                summary: ریست رمز
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetDone'
+              examples:
+                موفقیت:
+                  value:
+                    detail: Password reset successful.
+          description: ''
+components:
+  schemas:
+    AddFavoriteRequest:
+      type: object
+      properties:
+        conversationId:
+          type: integer
+      required:
+      - conversationId
+    AddMemberRequest:
+      type: object
+      properties:
+        userId:
+          type: integer
+      required:
+      - userId
+    AddMemberResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+        faMessage:
+          type: string
+      required:
+      - detail
+      - faMessage
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        type:
+          $ref: '#/components/schemas/ConversationTypeEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+          readOnly: true
+        last_message:
+          type: string
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - last_message
+      - participants
+      - type
+    ConversationError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    ConversationTypeEnum:
+      enum:
+      - private
+      - group
+      type: string
+      description: |-
+        * `private` - Private
+        * `group` - Group
+    CreateConversationRequest:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/CreateConversationTypeEnum'
+        userId:
+          type: integer
+      required:
+      - type
+    CreateConversationTypeEnum:
+      enum:
+      - private
+      - group
+      type: string
+      description: |-
+        * `private` - private
+        * `group` - group
+    CreateGroupRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+      required:
+      - name
+    EditMessageRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          minLength: 1
+      required:
+      - text
+    Group:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        owner:
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
+        max_members:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        member_count:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        description:
+          type: string
+          nullable: true
+        group_image:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - created_at
+      - id
+      - member_count
+      - name
+      - owner
+    LoginBadRequest:
+      type: object
+      properties:
+        detail:
+          type: string
+        faMessage:
+          type: string
+      required:
+      - detail
+      - faMessage
+    LoginInputRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+      required:
+      - password
+      - username
+    LoginSuccess:
+      type: object
+      properties:
+        detail:
+          type: string
+        faMessage:
+          type: string
+        access:
+          type: string
+        refresh:
+          type: string
+      required:
+      - access
+      - detail
+      - faMessage
+      - refresh
+    LoginUnauthorized:
+      type: object
+      properties:
+        detail:
+          type: string
+        faMessage:
+          type: string
+      required:
+      - detail
+      - faMessage
+    LogoutRequestRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+    LogoutSuccess:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    MarkReadRequest:
+      type: object
+      properties:
+        messageIds:
+          type: array
+          items:
+            type: integer
+      required:
+      - messageIds
+    MarkReadResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    Message:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        conversation:
+          type: integer
+          readOnly: true
+        sender:
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
+        text:
+          type: string
+          readOnly: true
+        image:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - conversation
+      - created_at
+      - id
+      - sender
+      - text
+    MuteConversationRequest:
+      type: object
+      properties:
+        conversationId:
+          type: integer
+      required:
+      - conversationId
+    PatchedPartialEditMessageRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          minLength: 1
+    PatchedPartialUpdateGroupRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          minLength: 1
+    PatchedProfileRequest:
+      type: object
+      properties:
+        display_name:
+          type: string
+          nullable: true
+          maxLength: 100
+        bio:
+          type: string
+          nullable: true
+        avatar:
+          type: string
+          format: binary
+          nullable: true
+    PatchedUserUpdateRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+    PinMessageRequest:
+      type: object
+      properties:
+        messageId:
+          type: integer
+      required:
+      - messageId
+    Profile:
+      type: object
+      properties:
+        display_name:
+          type: string
+          nullable: true
+          maxLength: 100
+        bio:
+          type: string
+          nullable: true
+        avatar:
+          type: string
+          format: uri
+          nullable: true
+    ProfileError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    PublicUser:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        display_name:
+          type: string
+          readOnly: true
+          default: ''
+      required:
+      - display_name
+      - id
+      - username
+    RefreshError:
+      type: object
+      properties:
+        detail:
+          type: string
+        faMessage:
+          type: string
+      required:
+      - detail
+      - faMessage
+    RefreshRequestRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    RefreshSuccess:
+      type: object
+      properties:
+        access:
+          type: string
+      required:
+      - access
+    RemoveMemberResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+        faMessage:
+          type: string
+      required:
+      - detail
+      - faMessage
+    ResetDone:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    ResetPasswordRequest:
+      type: object
+      properties:
+        newPassword:
+          type: string
+          minLength: 1
+      required:
+      - newPassword
+    SendMessageRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          minLength: 1
+        imageId:
+          type: integer
+        repliedToId:
+          type: integer
+      required:
+      - text
+    UnreadCounts:
+      type: object
+      properties:
+        conversationId:
+          type: integer
+        unread:
+          type: integer
+      required:
+      - conversationId
+      - unread
+    UpdateGroupRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          minLength: 1
+        maxMembers:
+          type: integer
+    UploadError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    UploadSuccess:
+      type: object
+      properties:
+        id:
+          type: integer
+        url:
+          type: string
+      required:
+      - id
+      - url
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        is_staff:
+          type: boolean
+          title: Staff status
+          description: Designates whether the user can log into this admin site.
+        display_name:
+          type: string
+          readOnly: true
+          default: ''
+      required:
+      - display_name
+      - id
+      - username
+    UserCreateRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+      required:
+      - password
+      - username
+    UserUpdateRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - username
