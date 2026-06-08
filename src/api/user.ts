@@ -16,7 +16,7 @@ export const useUpdateUserProfile = () => {
     return useMutation({
         mutationFn: (data: IUpdateUserProfile) => {
             const formData = new FormData();
-            if (data.displayName !== undefined) formData.append('displayName', data.displayName);
+            if (data.displayName !== undefined) formData.append('display_name', data.displayName);
             if (data.bio !== undefined) formData.append('bio', data.bio ?? '');
             if (data.avatarFile) formData.append('avatar', data.avatarFile);
             return api

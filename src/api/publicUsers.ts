@@ -22,7 +22,7 @@ export const useCreateConversation = () => {
     return useMutation({
         mutationFn: (userId: number) =>
             api
-                .post<IConversation>('/conversations/', { type: 'private', userId })
+                .post<IConversation>('/conversations/', { type: 'private', user_id: userId })
                 .then((res) => res.data),
         onSuccess: (conv) => {
             queryClient.setQueryData(
