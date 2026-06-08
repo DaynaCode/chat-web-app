@@ -1,0 +1,13 @@
+image: node:18-alpine
+
+stages:
+  - update-service
+
+deploy:
+  stage: update-service
+  only:
+    - main
+  script:
+    - npm install -g @chabokan.net/cli
+    - chabok login -t $CHABOKAN_TOKEN
+    - chabok deploy -s my-service

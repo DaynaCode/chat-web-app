@@ -1,0 +1,28 @@
+@font-face {
+    font-family: "Pinar";
+    src: url(@/assets/fonts/Pinar-FD-Bold.woff2);
+}
+@font-face {
+    font-family: "Pinar";
+    src: url(@/assets/fonts/Pinar-FD-Black.woff2);
+}
+@font-face {
+    font-family: "Pinar";
+    src: url(@/assets/fonts/Pinar-FD-ExtraBold.woff2);
+}
+@font-face {
+    font-family: "Pinar";
+    src: url(@/assets/fonts/Pinar-FD-Light.woff2);
+}
+@font-face {
+    font-family: "Pinar";
+    src: url(@/assets/fonts/Pinar-FD-Medium.woff2);
+}
+@font-face {
+    font-family: "Pinar";
+    src: url(@/assets/fonts/Pinar-FD-Regular.woff2);
+}
+@font-face {
+    font-family: "Pinar";
+    src: url(@/assets/fonts/Pinar-FD-SemiBold.woff2);
+}

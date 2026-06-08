@@ -1,0 +1,63 @@
+@import "tailwindcss";
+@import "./font.css";
+@theme{
+    --font-sans: "Pinar";
+
+    /*color*/
+    --color-primary-50: #F9F8FD;
+    --color-primary-100: #EDEAFA;
+    --color-primary-200: #DCD7F6;
+    --color-primary-300: #CCC4F1;
+    --color-primary-400: #BBB1ED;
+    --color-primary-500: #AA9EE8;
+    --color-primary-600: #9A8BE4;
+    --color-primary-700: #8978DF;
+    --color-primary-800: #7965DB;
+    --color-primary-900: #5D49BE;
+
+
+    --color-neutral-50: #FFFFFF;
+    --color-neutral-100: #FAFAFA;
+    --color-neutral-200: #F5F5F5;
+    --color-neutral-300: #E8E8E8;
+    --color-neutral-400: #DCDCDC;
+    --color-neutral-500: #A1A1A1;
+    --color-neutral-600: #727272;
+    --color-neutral-700: #5B5B5B;
+    --color-neutral-800: #434343;
+    --color-neutral-900: #141414;
+
+    --color-bg-01: #FFFFFF;
+    --color-bg-02: #FAFAFA;
+    --color-bg-03: #F5F5F5;
+    --color-bg-04: #E8E8E8;
+
+    --color-b-light: #F5F5F5;
+    --color-b-defutl: #E8E8E8;
+    --color-b-dark: #DCDCDC;
+    --color-b-highlight: #6852D6;
+
+    --color-t-primay: #141414;
+    --color-t-secondary: #727272;
+    --color-t-tertiary: #A1A1A1;
+    --color-t-disabled: #FFFFFF;
+    --color-t-white: #DCDCDC;
+    --color-t-highlight: #6852D6;
+
+    --color-i-primay: #141414;
+    --color-i-secondary: #A1A1A1;
+    --color-i-tertiary: #DCDCDC;
+    --color-i-white: #FFFFFF;
+    --color-i-highlight: #6852D6;
+}
+
+@utility container {
+    margin-inline: auto;
+    padding-inline: 0.625rem;
+    width: 100%;
+    max-width: 100%;
+
+    @media (width >= 1440px) {
+        max-width: 1440px; /* 1440px */
+    }
+}

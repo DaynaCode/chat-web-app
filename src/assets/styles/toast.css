@@ -1,0 +1,98 @@
+@reference "tailwindcss";
+
+.custom-toast {
+    direction: rtl;
+    position: relative;
+    overflow: hidden;
+    @apply shadow-2xs;
+    background-color: red;
+}
+
+.Toastify__toast {
+    min-height: 44px !important;
+    border-radius: 8px !important;
+    padding: 8px 13px !important;
+    padding-left: 16px !important;
+    width: auto !important;
+}
+@media screen and (max-width: 576px) {
+    .Toastify__toast {
+        margin: 10px;
+    }
+}
+.Toastify__toast-container {
+    width: 347px !important;
+}
+.Toastify__toast-body.custom-toast-body {
+    @apply text-neutral-900 font-medium gap-2;
+    font-size: 14px;
+    font-family: 'peyda-fanum';
+    margin: 0;
+    padding: 0;
+    gap: 8px;
+}
+
+.custom-toast::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 3px;
+    height: 100%;
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+.Toastify__close-button {
+    align-self: auto !important;
+}
+.Toastify__toast--success.custom-toast::before {
+    background-color: #1e7b22;
+}
+
+.Toastify__toast--error.custom-toast::before {
+    background-color: #b01111;
+}
+
+.Toastify__toast--info.custom-toast::before {
+    background-color: #0e94f9;
+}
+
+.Toastify__toast--warning.custom-toast::before {
+    background-color: #f7a709;
+}
+
+.custom-toast .Toastify__toast-icon {
+    margin: 0;
+}
+
+.custom-toast .Toastify__toast-icon svg {
+    display: none;
+}
+
+.Toastify__toast--success.custom-toast .Toastify__toast-icon {
+    background: url('../icons/toast-success.svg') no-repeat center;
+    background-size: 20px;
+    width: 20px;
+    height: 20px;
+}
+
+.Toastify__toast--error.custom-toast .Toastify__toast-icon {
+    background: url('../icons/toast-error.svg') no-repeat center;
+    background-size: 20px;
+    width: 20px;
+    height: 20px;
+}
+
+.Toastify__toast--info.custom-toast .Toastify__toast-icon {
+    background: url('../icons/toast-info.svg') no-repeat center;
+    background-size: 20px;
+    width: 20px;
+    height: 20px;
+}
+
+.Toastify__toast--warning.custom-toast .Toastify__toast-icon {
+    background: url('../icons/toast-warning.svg') no-repeat center;
+    background-size: 20px;
+    width: 20px;
+    height: 20px;
+}
