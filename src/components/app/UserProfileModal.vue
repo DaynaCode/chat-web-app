@@ -94,6 +94,7 @@ watch(
 function onAvatarChange(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) return;
+    avatarFile.value = file;
     avatarPreview.value = URL.createObjectURL(file);
 }
 
@@ -104,7 +105,7 @@ function handleSave() {
         return;
     }
     updateProfile(
-        { displayName: form.value.displayName, bio: form.value.bio },
+        { displayName: form.value.displayName, bio: form.value.bio, avatarFile: avatarFile.value ?? undefined },
         { onSuccess: () => { visible.value = false; } }
     );
 }

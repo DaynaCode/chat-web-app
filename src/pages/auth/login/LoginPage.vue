@@ -78,7 +78,7 @@ const loginHandle = async () => {
     connect();
     toast.success('با موفقیت وارد شدید .')
     isLoading.value = false;
-    router.push({ name: 'Chat' });
+    router.push({ name: 'ChatList' });
   } catch (error) {
     isLoading.value = false;
   }

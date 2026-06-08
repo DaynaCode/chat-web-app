@@ -14,8 +14,17 @@ export const useUserProfile = () => {
 export const useUpdateUserProfile = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: IUpdateUserProfile) =>
-            api.patch<IUserProfile>('/profile/', data).then((res) => res.data),
+        mutationFn: (data: IUpdateUserProfile) => {
+            const formData = new FormData();
+            if (data.displayName !== undefined) formData.append('displayName', data.displayName);
+            if (data.bio !== undefined) formData.append('bio', data.bio ?? '');
+            if (data.avatarFile) formData.append('avatar', data.avatarFile);
+            return api
+                .patch<IUserProfile>('/profile/', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                })
+                .then((res) => res.data);
+        },
         onSuccess: (data) => {
             queryClient.setQueryData(['user-profile'], data);
         },

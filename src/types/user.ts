@@ -9,6 +9,7 @@ export interface IUserProfile {
 export interface IUpdateUserProfile {
     displayName?: string;
     bio?: string;
+    avatarFile?: File;
 }
 
 export interface IAuthMe {
