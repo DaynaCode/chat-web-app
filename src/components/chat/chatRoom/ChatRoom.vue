@@ -1,72 +1,57 @@
 <template>
   <div class="bg-gray-50 w-full h-dvh flex flex-col overflow-hidden">
+    <!-- Header -->
     <div class="bg-white w-full py-3 shadow-sm border-b border-gray-200 shrink-0">
-      <div
-        class="flex gap-2 items-center cursor-pointer px-4"
-        @click="showProfile = true"
-      >
-        <Avatar label="م م" class="text-sm!" shape="circle" size="large" />
-        <p class="text-sm font-bold">محمدرضا مرادی</p>
-      </div>
-    </div>
-    <MessagesList/>
-    <div class="w-full bg-white shadow-2xl p-3 flex items-start gap-2 border-t border-gray-200 shrink-0">
-      <div class="w-10 h-10 bg-primary-800 rounded-full flex justify-center items-center cursor-pointer shrink-0">
-        <IsIcon name="send" class="rotate-90"/>
-      </div>
-      <div class="flex-1">
-        <Textarea 
-          v-model="userName" 
-          autoResize 
-          rows="1" 
-          class="w-full max-h-16 overflow-y-auto resize-none focus:ring-0"
-        />
-      </div>
-      <div class="w-10 h-10 flex justify-center items-center cursor-pointer shrink-0">
-        <IsIcon name="attachment" class="size-6 text-zinc-500"/>
+      <div class="flex gap-2 items-center cursor-pointer px-4" @click="showProfile = true">
+        <Avatar :label="conversationLabel.substring(0, 2)" class="text-sm!" shape="circle" size="large" />
+        <div dir="rtl">
+          <p class="text-sm font-bold">{{ conversationLabel }}</p>
+          <p v-if="isOnline" class="text-xs text-green-500">آنلاین</p>
+        </div>
       </div>
     </div>
 
+    <!-- Messages -->
+    <MessagesList :messages="messages" :isLoading="isLoading" />
+
+    <!-- Input -->
+    <div class="w-full bg-white shadow-2xl p-3 flex items-start gap-2 border-t border-gray-200 shrink-0">
+      <button
+        @click="sendMsg"
+        :disabled="!messageText.trim() || isSending"
+        class="w-10 h-10 bg-primary-800 rounded-full flex justify-center items-center cursor-pointer shrink-0 disabled:opacity-50"
+      >
+        <span v-if="isSending" class="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        <IsIcon v-else name="send" class="rotate-90" />
+      </button>
+      <div class="flex-1">
+        <Textarea
+          v-model="messageText"
+          autoResize
+          rows="1"
+          class="w-full max-h-16 overflow-y-auto resize-none focus:ring-0"
+          @keydown.enter.exact.prevent="sendMsg"
+        />
+      </div>
+      <div class="w-10 h-10 flex justify-center items-center cursor-pointer shrink-0">
+        <IsIcon name="attachment" class="size-6 text-zinc-500" />
+      </div>
+    </div>
   </div>
- <AppModal v-model:visible="showProfile">
+
+  <!-- Contact Profile Modal -->
+  <AppModal v-model:visible="showProfile">
     <template #container>
-      <div class="p-6">
+      <div class="p-6" dir="rtl">
         <div class="flex justify-end mb-2">
-          <button
-            @click="showProfile = false"
-            class="cursor-pointer size-7"
-          >
+          <button @click="showProfile = false" class="cursor-pointer size-7">
             <IsIcon name="close" class="text-gray-500" />
           </button>
         </div>
         <div class="w-full flex flex-col justify-center items-center gap-3">
-          <Avatar
-            label="م م"
-            class="text-xl! bg-blue-100 text-blue-600"
-            shape="circle"
-            size="xlarge"
-          />
-          <div class="text-center flex flex-col gap-2">
-            <p class="text-lg font-bold text-gray-900">محمدرضا مرادی</p>
-            <p class="text-xs text-gray-400">@m_moradi</p>
-          </div>
-        </div>
-        <Divider />
-        <div class="flex flex-col gap-4 py-2">
-          <div class="flex items-center gap-3 text-sm">
-            <IsIcon name="phone" />
-            <span class="font-semibold! text-gray-700">تلفن ضروری :</span>
-            <span class="text-gray-600">۰۹۱۲۳۴۵۶۷۸۹</span>
-          </div>
-          <div class="flex items-center gap-3 text-sm">
-            <IsIcon name="envelope" class="text-gray-400" />
-            <span class="font-semibold! text-gray-700">ایمیل :</span>
-            <span class="text-gray-600">example@email.com</span>
-          </div>
-          <div class="text-sm text-gray-600 leading-6">
-            <p class="font-semibold mb-1">درباره من:</p>
-            اینجا فضایی است که کاربر می‌تواند بیوگرافی یا وضعیت فعلی خود را
-            بنویسد.
+          <Avatar :label="conversationLabel.substring(0, 2)" class="text-xl! bg-blue-100 text-blue-600" shape="circle" size="xlarge" />
+          <div class="text-center">
+            <p class="text-lg font-bold text-gray-900">{{ conversationLabel }}</p>
           </div>
         </div>
       </div>
@@ -74,21 +59,103 @@
   </AppModal>
 </template>
 
-
 <script setup lang="ts">
-import { ref } from 'vue';
-const showProfile = ref<boolean>(false);
-const userName = ref('');
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
+import { useQueryClient } from '@tanstack/vue-query';
+import { useMessages, useSendMessage } from '@/api/conversations';
+import { useConversations } from '@/api/conversations';
+import { useWebSocket } from '@/composables/useWebSocket';
+import { useJwtService } from '@/composables/useJwtService';
+import type { IMessage } from '@/types/message';
+
+const route = useRoute();
+const conversationId = computed(() => Number(route.params.id));
+
+const { jwt } = useJwtService();
+const myId = computed(() => jwt.value?.userId ?? 0);
+
+const { data: messagesPage, isLoading } = useMessages(conversationId.value);
+const { data: conversations } = useConversations();
+const { mutate: sendMessage, isPending: isSending } = useSendMessage(conversationId.value);
+const { onMessage, offMessage, onStatus, offStatus } = useWebSocket();
+const queryClient = useQueryClient();
+
+const messageText = ref('');
+const showProfile = ref(false);
+const onlineUserIds = ref<number[]>([]);
+
+const messages = computed<IMessage[]>(() => messagesPage.value?.results ?? []);
+
+const currentConversation = computed(() =>
+  conversations.value?.find((c) => c.id === conversationId.value)
+);
+
+const conversationLabel = computed(() => {
+  const conv = currentConversation.value;
+  if (!conv) return '...';
+  if (conv.type === 'group') return conv.group?.name ?? 'گروه';
+  const other = conv.participants.find((p) => p.id !== myId.value);
+  return other?.displayName || other?.username || 'کاربر';
+});
+
+const otherParticipantId = computed(() => {
+  const conv = currentConversation.value;
+  if (!conv || conv.type !== 'private') return null;
+  return conv.participants.find((p) => p.id !== myId.value)?.id ?? null;
+});
+
+const isOnline = computed(() =>
+  otherParticipantId.value != null &&
+  onlineUserIds.value.includes(otherParticipantId.value)
+);
+
+function handleNewMessage(msg: IMessage) {
+  queryClient.setQueryData(
+    ['messages', conversationId.value],
+    (old: { results: IMessage[]; nextCursor: string | null } | undefined) => {
+      if (!old) return { results: [msg], nextCursor: null };
+      // avoid duplicates
+      const exists = old.results.some((m) => m.id === msg.id);
+      if (exists) return old;
+      return { ...old, results: [...old.results, msg] };
+    }
+  );
+}
+
+function handleStatus({ userId, status }: { userId: number; status: string }) {
+  if (status === 'online') {
+    if (!onlineUserIds.value.includes(userId)) onlineUserIds.value = [...onlineUserIds.value, userId];
+  } else {
+    onlineUserIds.value = onlineUserIds.value.filter((id) => id !== userId);
+  }
+}
+
+function sendMsg() {
+  const text = messageText.value.trim();
+  if (!text) return;
+  messageText.value = '';
+  sendMessage({ text });
+}
+
+onMounted(() => {
+  onMessage(conversationId.value, handleNewMessage);
+  onStatus(handleStatus);
+});
+
+onUnmounted(() => {
+  offMessage(conversationId.value, handleNewMessage);
+  offStatus(handleStatus);
+});
+
+// reload messages when conversation changes
+watch(conversationId, () => {
+  offMessage(conversationId.value, handleNewMessage);
+  onMessage(conversationId.value, handleNewMessage);
+});
 </script>
+
 <style scoped>
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-
-.no-scrollbar {
-  -ms-overflow-style: none;  
-  scrollbar-width: none;  
-}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 </style>

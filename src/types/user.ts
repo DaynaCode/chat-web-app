@@ -1,13 +1,20 @@
 export interface IUserProfile {
     id: number;
-    first_name: string;
-    last_name: string;
     username: string;
+    displayName: string;
+    bio: string | null;
     avatar: string | null;
 }
 
 export interface IUpdateUserProfile {
-    first_name: string;
-    last_name: string;
-    avatar?: string | null;
+    displayName?: string;
+    bio?: string;
+}
+
+export interface IAuthMe {
+    id: number;
+    username: string;
+    isActive: boolean;
+    isStaff: boolean;
+    displayName: string;
 }

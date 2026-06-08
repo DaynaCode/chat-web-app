@@ -20,7 +20,7 @@
         </div>
         <div class="text-right leading-tight" dir="rtl">
           <p class="text-xs font-semibold text-gray-800 group-hover:text-primary-600 transition-colors">
-            {{ fullName || 'کاربر' }}
+            {{ profile?.displayName || profile?.username || 'کاربر' }}
           </p>
           <p class="text-[10px] text-gray-400 font-mono" dir="ltr">#{{ userId }}</p>
         </div>
@@ -28,10 +28,12 @@
 
       <button
         @click="handleLogout"
-        class="size-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+        :disabled="isLogoutPending"
+        class="size-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
         title="خروج از حساب"
       >
-        <IsIcon name="logout" class="size-4" />
+        <span v-if="isLogoutPending" class="size-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+        <IsIcon v-else name="logout" class="size-4" />
       </button>
     </div>
 
@@ -40,14 +42,8 @@
       class="h-14 border-b border-gray-200 flex items-center justify-around bg-white p-2 shrink-0"
     >
       <button @click="activeTab = 'all'" :class="tabClass('all')">همه</button>
-
-      <button @click="activeTab = 'private'" :class="tabClass('private')">
-        شخصی
-      </button>
-
-      <button @click="activeTab = 'group'" :class="tabClass('group')">
-        گروه
-      </button>
+      <button @click="activeTab = 'private'" :class="tabClass('private')">شخصی</button>
+      <button @click="activeTab = 'group'" :class="tabClass('group')">گروه</button>
     </div>
 
     <!-- Search -->
@@ -55,7 +51,7 @@
       <AppInput
         v-model="search"
         type="text"
-        name="userName"
+        name="search"
         placeholder="جست و جو . . . . . ."
       >
         <template #icon>
@@ -66,14 +62,13 @@
 
     <!-- Chat List -->
     <div class="flex-1 overflow-y-auto">
-      <ChatList />
+      <ChatList :search="search" :activeTab="activeTab" />
     </div>
   </div>
 
   <!-- Profile Modal -->
   <UserProfileModal
     v-model:visible="showProfile"
-    :userId="userId"
     :profile="profile"
   />
 </template>
@@ -84,34 +79,32 @@ import { useRouter } from 'vue-router';
 import type { TActiveTabChat } from '@/types/chat';
 import { useJwtService } from '@/composables/useJwtService';
 import { useUserProfile } from '@/api/user';
+import { useLogout } from '@/api/auth';
+import { useWebSocket } from '@/composables/useWebSocket';
 
 const router = useRouter();
-const { jwt, remove } = useJwtService();
+const { jwt } = useJwtService();
+const { data: profile } = useUserProfile();
+const { mutate: logout, isPending: isLogoutPending } = useLogout();
+const { disconnect } = useWebSocket();
 
 const userId = computed(() => jwt.value?.userId ?? 0);
-const { data: profile } = useUserProfile(userId.value);
-
-const fullName = computed(() => {
-  if (!profile.value) return '';
-  return [profile.value.first_name, profile.value.last_name].filter(Boolean).join(' ');
-});
-
 const activeTab = ref<TActiveTabChat>('all');
 const search = ref<string>('');
 const showProfile = ref(false);
 
-const tabClass = (tab: string) => {
-  return [
-    'flex-1 h-full text-xs transition-colors rounded-xl',
-    'flex items-center justify-center ',
-    activeTab.value === tab
-      ? 'text-primary bg-primary-800 text-white'
-      : 'text-gray-500',
-  ];
-};
+const tabClass = (tab: string) => [
+  'flex-1 h-full text-xs transition-colors rounded-xl',
+  'flex items-center justify-center',
+  activeTab.value === tab ? 'text-primary bg-primary-800 text-white' : 'text-gray-500',
+];
 
 function handleLogout() {
-  remove();
-  router.push({ name: 'Login' });
+  logout(undefined, {
+    onSettled: () => {
+      disconnect();
+      router.push({ name: 'Login' });
+    },
+  });
 }
 </script>
