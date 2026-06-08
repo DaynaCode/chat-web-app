@@ -142,10 +142,24 @@ function sendMsg() {
   messageText.value = '';
 
   if (isConnected.value) {
-    // send via WebSocket — server will broadcast new_message back to us
-    wsSend({ conversationId: conversationId.value, text });
+    const clientMessageId = wsSend({ conversationId: conversationId.value, text });
+    // optimistic: add message immediately, server broadcast will dedup by clientMessageId
+    if (clientMessageId) {
+      addMessage({
+        id: -Date.now(), // temp negative id
+        conversationId: conversationId.value,
+        sender: { id: myId.value, username: '' },
+        text,
+        image: null,
+        createdAt: new Date().toISOString(),
+        editedAt: null,
+        isDeleted: false,
+        repliedTo: null,
+        clientMessageId,
+      });
+    }
   } else {
-    // fallback: REST API, add to list manually
+    // fallback: REST API
     sendMessageRest({ text }, { onSuccess: (msg) => addMessage(msg) });
   }
 }

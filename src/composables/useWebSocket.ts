@@ -22,12 +22,41 @@ function getToken(): string {
     return get();
 }
 
+// Normalize WS message: handle both camelCase and snake_case from server
+function normalizeMessage(raw: Record<string, any>): IMessage {
+    const conversationId = Number(raw.conversationId ?? raw.conversation_id ?? 0);
+    const sender = raw.sender ?? {};
+    return {
+        id: raw.id,
+        conversationId,
+        sender: {
+            id: Number(sender.id ?? 0),
+            username: sender.username ?? '',
+            displayName: sender.displayName ?? sender.display_name ?? sender.username ?? '',
+        },
+        text: raw.text ?? null,
+        image: raw.image ?? null,
+        createdAt: raw.createdAt ?? raw.created_at ?? '',
+        editedAt: raw.editedAt ?? raw.edited_at ?? null,
+        isDeleted: raw.isDeleted ?? raw.is_deleted ?? false,
+        repliedTo: null,
+        clientMessageId: raw.clientMessageId ?? raw.client_message_id,
+    };
+}
+
+function dispatchMessage(raw: Record<string, any>) {
+    const msg = normalizeMessage(raw);
+    const handlers = messageListeners.get(msg.conversationId);
+    if (handlers) {
+        handlers.forEach((h) => h(msg));
+    }
+}
+
 function connectChat() {
     const token = getToken();
     if (!token) return;
 
-    const url = `${WS_BASE}/chat/?token=${token}`;
-    const ws = new WebSocket(url);
+    const ws = new WebSocket(`${WS_BASE}/chat/?token=${token}`);
 
     ws.onopen = () => {
         isConnected.value = true;
@@ -37,29 +66,22 @@ function connectChat() {
         try {
             const data = JSON.parse(event.data);
             if (data.type === 'new_message' && data.message) {
-                const msg: IMessage = data.message;
-                const handlers = messageListeners.get(msg.conversationId);
-                if (handlers) {
-                    handlers.forEach((h) => h(msg));
-                }
+                dispatchMessage(data.message);
             }
         } catch {
-            // ignore malformed messages
+            // ignore
         }
     };
 
     ws.onclose = () => {
         isConnected.value = false;
         chatSocket.value = null;
-        // auto-reconnect after 3 seconds
         reconnectTimer = setTimeout(() => {
             if (getToken()) connectChat();
         }, 3000);
     };
 
-    ws.onerror = () => {
-        ws.close();
-    };
+    ws.onerror = () => ws.close();
 
     chatSocket.value = ws;
 }
@@ -68,16 +90,15 @@ function connectStatus() {
     const token = getToken();
     if (!token) return;
 
-    const url = `${WS_BASE}/status/?token=${token}`;
-    const ws = new WebSocket(url);
+    const ws = new WebSocket(`${WS_BASE}/status/?token=${token}`);
 
     ws.onmessage = (event) => {
         try {
             const data = JSON.parse(event.data);
             if (data.type === 'user_status') {
-                statusListeners.forEach((h) =>
-                    h({ userId: data.userId, status: data.status })
-                );
+                const userId = Number(data.userId ?? data.user_id ?? 0);
+                const status = data.status;
+                statusListeners.forEach((h) => h({ userId, status }));
             }
         } catch {
             // ignore
@@ -110,23 +131,31 @@ export function useWebSocket() {
         isConnected.value = false;
     }
 
+    // Returns clientMessageId so caller can use for optimistic update
     function sendMessage(payload: {
         conversationId: number;
         text: string;
         imageId?: number | null;
         repliedToId?: number | null;
-    }) {
-        if (!chatSocket.value || chatSocket.value.readyState !== WebSocket.OPEN) return;
+    }): string | null {
+        if (!chatSocket.value || chatSocket.value.readyState !== WebSocket.OPEN) return null;
+        const clientMessageId = crypto.randomUUID();
         chatSocket.value.send(
             JSON.stringify({
                 type: 'send_message',
+                // send both forms to be safe
                 conversationId: payload.conversationId,
+                conversation_id: payload.conversationId,
                 text: payload.text,
                 imageId: payload.imageId ?? null,
+                image_id: payload.imageId ?? null,
                 repliedToId: payload.repliedToId ?? null,
-                clientMessageId: crypto.randomUUID(),
+                replied_to_id: payload.repliedToId ?? null,
+                clientMessageId,
+                client_message_id: clientMessageId,
             })
         );
+        return clientMessageId;
     }
 
     function onMessage(conversationId: number, handler: MessageHandler) {
