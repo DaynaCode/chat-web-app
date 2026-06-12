@@ -56,6 +56,7 @@ import AppInput from "@/components/app/AppInput.vue";
 import ButtonComponent from "@/components/shared/ButtonComponent.vue";
 import {useLogin} from "@/api/auth";
 import {useRouter} from "vue-router";
+import {useWebSocket} from "@/composables/useWebSocket";
 import type {ILogIn} from "@/types/auth";
 import {toast} from "vue3-toastify";
 
@@ -64,6 +65,8 @@ const password = ref<string>("");
 const isLoading = ref<boolean>(false);
 const {mutateAsync: login} = useLogin();
 const router = useRouter();
+const { connect } = useWebSocket();
+
 const loginHandle = async () => {
   isLoading.value = true;
   try {
@@ -72,13 +75,12 @@ const loginHandle = async () => {
       password: password.value,
     };
     await login(payload);
+    connect();
     toast.success('با موفقیت وارد شدید .')
-    isLoading.value = false,
-    router.push({
-      name: 'Chat'
-    })
+    isLoading.value = false;
+    router.push({ name: 'ChatList' });
   } catch (error) {
-    isLoading.value = false
+    isLoading.value = false;
   }
 };
 </script>

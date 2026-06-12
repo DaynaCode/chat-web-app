@@ -26,3 +26,6 @@ dist-ssr
 # ts
 src/*.d.ts
 
+# compiled js artifacts from vue/ts files
+src/**/*.js
+

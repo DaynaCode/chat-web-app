@@ -1,32 +1,44 @@
 import { useMutation } from '@tanstack/vue-query';
+import { useApi } from '@/composables/useApi';
+import { useJwtService } from '@/composables/useJwtService';
+import type { ILogIn, ILoginResponse } from '@/types/auth';
+import type { IAuthMe } from '@/types/user';
 
-import { getLogin } from '.';
+const REFRESH_KEY = 'REFRESH_TOKEN';
 
-import type { ILogIn } from '@/types/auth';
+const api = useApi();
 
-
-
-const login = async (payload: ILogIn) => {
-    const res = await getLogin<{ data: ILogIn }>(payload);
+const loginRequest = async (payload: ILogIn): Promise<ILoginResponse> => {
+    const res = await api.post<ILoginResponse>('/auth/login/', payload, {
+        headers: { skipAuth: true },
+    });
     return res.data;
 };
 
 export const useLogin = () => {
+    const { set } = useJwtService();
     return useMutation({
-        mutationFn: login,
+        mutationFn: loginRequest,
+        onSuccess: (data) => {
+            set(data.access);
+            localStorage.setItem(REFRESH_KEY, data.refresh);
+        },
     });
 };
 
-// const login = async (payload: ILogIn) => {
-//     const response = await getLogin<{ data: ILogIn }>(payload);
-//
-//     return response.data;
-// };
-//
-// export const useLogin = (data: ILogIn) => {
-//     return useQuery({
-//         queryKey: ['login', data],
-//         queryFn: () => login(data),
-//         enabled: false
-//     });
-// };
+export const useLogout = () => {
+    const { remove } = useJwtService();
+    return useMutation({
+        mutationFn: async () => {
+            const refresh = localStorage.getItem(REFRESH_KEY);
+            await api.post('/auth/logout/', { refresh });
+        },
+        onSettled: () => {
+            remove();
+            localStorage.removeItem(REFRESH_KEY);
+        },
+    });
+};
+
+export const getAuthMe = (): Promise<IAuthMe> =>
+    api.get<IAuthMe>('/auth/me/').then((res) => res.data);
