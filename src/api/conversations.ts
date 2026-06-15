@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient, type MaybeRef } from '@tanstack/vue-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 import { computed, toRef, isRef, type Ref } from 'vue';
 import { useApi } from '@/composables/useApi';
 import type { IConversation } from '@/types/conversation';
@@ -48,6 +48,32 @@ export const useSendMessageRest = (conversationId: Ref<number> | number) => {
                     return [...old, newMsg];
                 }
             );
+        },
+    });
+};
+
+export const useDeleteMessage = (conversationId: Ref<number> | number) => {
+    const idRef = isRef(conversationId) ? conversationId : toRef(conversationId);
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (messageId: number) =>
+            api.delete(`/messages/${messageId}/`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messages', idRef.value] });
+        },
+    });
+};
+
+export const useEditMessage = (conversationId: Ref<number> | number) => {
+    const idRef = isRef(conversationId) ? conversationId : toRef(conversationId);
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ messageId, text }: { messageId: number; text: string }) =>
+            api
+                .patch<IMessage>(`/messages/${messageId}/`, { text })
+                .then((res) => res.data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messages', idRef.value] });
         },
     });
 };

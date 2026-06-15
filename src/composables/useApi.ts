@@ -4,7 +4,7 @@ import { toast } from 'vue3-toastify';
 import router from '@/routes';
 
 const api = axios.create({
-    baseURL: 'http://api.photoshade.ir/api/',
+    baseURL: 'https://api.photoshade.ir/api/',
     timeout: 35000,
     headers: {
         'Content-Type': 'application/json'

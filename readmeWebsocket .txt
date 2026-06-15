@@ -170,12 +170,17 @@ ws.onmessage = (event) => {
   }
 };
 
-// Status WebSocket
-const statusWs = new WebSocket(`ws://api.photoshade.ir:8001/ws/status/?token=${token}`);
-statusWs.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  if (data.type === "user_status") {
-    console.log(`User ${data.user_id} is ${data.status}`);
-  }
-};
 
+| Event (Client → Server) | Payload | توضیح |
+|--------------------------|---------|-------|
+| `edit_message` | `{"type": "edit_message", "message_id": 1, "text": "متن جدید"}` | ویرایش متن پیام (فقط نویسنده) |
+| `delete_message` | `{"type": "delete_message", "message_id": 1}` | حذف نرم پیام (نویسنده یا ادمین) |
+
+| Event (Server → Client) | Payload | توضیح |
+|--------------------------|---------|-------|
+| `message_edited` | `{"type": "message_edited", "message": {"id": 1, "conversation_id": 1, "text": "متن جدید", "edited_at": "..."}}` | پیام ویرایش شد |
+| `message_deleted` | `{"type": "message_deleted", "message_id": 1, "conversation_id": 1}` | پیام حذف شد |
+
+---
+
+**نکته:** پس از اعمال این تغییرات، هم از طریق REST (Viewها) و هم از طریق WebSocket (Consumers) رویدادهای ویرایش و حذف به‌صورت بلادرنگ به همهٔ اعضای مکالمه ارسال می‌شوند.  
