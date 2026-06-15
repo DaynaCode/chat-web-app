@@ -2,7 +2,7 @@ import { ref, computed } from 'vue';
 import { useJwtService } from '@/composables/useJwtService';
 import type { IMessage } from '@/types/message';
 
-const WS_BASE = 'ws://api.photoshade.ir:8001/ws';
+const WS_BASE = 'wss://ws.photoshade.ir/ws';
 
 // Singleton state
 const chatSocket = ref<WebSocket | null>(null);
@@ -10,12 +10,23 @@ const statusSocket = ref<WebSocket | null>(null);
 const isConnected = ref(false);
 
 type MessageHandler = (msg: IMessage) => void;
+type MessageEditedHandler = (data: { id: number; conversationId: number; text: string; editedAt: string }) => void;
+type MessageDeletedHandler = (data: { messageId: number; conversationId: number }) => void;
 type StatusHandler = (data: { userId: number; status: 'online' | 'offline' }) => void;
+type MentionHandler = (data: { id: number; conversationId: number; sender: string; text: string; createdAt: string }) => void;
+type ReadReceiptHandler = (data: { messageIds: number[]; readerId: number }) => void;
+type ErrorHandler = (detail: string) => void;
 
 const messageListeners = new Map<number, Set<MessageHandler>>();
+const messageEditedListeners = new Set<MessageEditedHandler>();
+const messageDeletedListeners = new Set<MessageDeletedHandler>();
 const statusListeners = new Set<StatusHandler>();
+const mentionListeners = new Set<MentionHandler>();
+const readReceiptListeners = new Set<ReadReceiptHandler>();
+const errorListeners = new Set<ErrorHandler>();
 
-let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let chatReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let statusReconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
 function getToken(): string {
     const { get } = useJwtService();
@@ -50,10 +61,12 @@ function normalizeMessage(raw: Record<string, any>): IMessage {
 
 function dispatchMessage(raw: Record<string, any>) {
     const msg = normalizeMessage(raw);
-    const handlers = messageListeners.get(msg.conversation);
-    if (handlers) {
-        handlers.forEach((h) => h(msg));
-    }
+    // broadcast to all registered conversation listeners
+    messageListeners.forEach((handlers, convId) => {
+        if (convId === msg.conversation || convId === msg.conversationId) {
+            handlers.forEach((h) => h(msg));
+        }
+    });
 }
 
 function connectChat() {
@@ -71,21 +84,59 @@ function connectChat() {
             const data = JSON.parse(event.data);
             if (data.type === 'new_message' && data.message) {
                 dispatchMessage(data.message);
+            } else if (data.type === 'mention' && data.message) {
+                const m = data.message;
+                mentionListeners.forEach((h) =>
+                    h({
+                        id: m.id,
+                        conversationId: Number(m.conversationId ?? m.conversation_id ?? 0),
+                        sender: m.sender ?? '',
+                        text: m.text ?? '',
+                        createdAt: m.createdAt ?? m.created_at ?? '',
+                    })
+                );
+            } else if (data.type === 'message_edited' && data.message) {
+                const m = data.message;
+                messageEditedListeners.forEach((h) =>
+                    h({
+                        id: Number(m.id),
+                        conversationId: Number(m.conversation_id ?? m.conversationId ?? 0),
+                        text: m.text ?? '',
+                        editedAt: m.edited_at ?? m.editedAt ?? '',
+                    })
+                );
+            } else if (data.type === 'message_deleted') {
+                messageDeletedListeners.forEach((h) =>
+                    h({
+                        messageId: Number(data.message_id ?? data.messageId ?? 0),
+                        conversationId: Number(data.conversation_id ?? data.conversationId ?? 0),
+                    })
+                );
+            } else if (data.type === 'read_receipt') {
+                const messageIds = (data.message_ids ?? data.messageIds ?? []).map(Number);
+                const readerId = Number(data.reader_id ?? data.readerId ?? 0);
+                readReceiptListeners.forEach((h) => h({ messageIds, readerId }));
+            } else if (data.type === 'error') {
+                errorListeners.forEach((h) => h(data.detail ?? 'خطای ناشناخته'));
             }
         } catch {
             // ignore
         }
     };
 
-    ws.onclose = () => {
+    ws.onclose = (ev) => {
         isConnected.value = false;
         chatSocket.value = null;
-        reconnectTimer = setTimeout(() => {
+        console.warn('[WS:chat] closed', ev.code, ev.reason);
+        chatReconnectTimer = setTimeout(() => {
             if (getToken()) connectChat();
         }, 3000);
     };
 
-    ws.onerror = () => ws.close();
+    ws.onerror = (ev) => {
+        console.error('[WS:chat] error', ev);
+        ws.close();
+    };
 
     chatSocket.value = ws;
 }
@@ -109,8 +160,17 @@ function connectStatus() {
         }
     };
 
-    ws.onclose = () => {
+    ws.onclose = (ev) => {
         statusSocket.value = null;
+        console.warn('[WS:status] closed', ev.code, ev.reason);
+        statusReconnectTimer = setTimeout(() => {
+            if (getToken()) connectStatus();
+        }, 3000);
+    };
+
+    ws.onerror = (ev) => {
+        console.error('[WS:status] error', ev);
+        ws.close();
     };
 
     statusSocket.value = ws;
@@ -127,7 +187,8 @@ export function useWebSocket() {
     }
 
     function disconnect() {
-        if (reconnectTimer) clearTimeout(reconnectTimer);
+        if (chatReconnectTimer) clearTimeout(chatReconnectTimer);
+        if (statusReconnectTimer) clearTimeout(statusReconnectTimer);
         chatSocket.value?.close();
         statusSocket.value?.close();
         chatSocket.value = null;
@@ -162,6 +223,18 @@ export function useWebSocket() {
         return clientMessageId;
     }
 
+    function editMessage(messageId: number, text: string): boolean {
+        if (!chatSocket.value || chatSocket.value.readyState !== WebSocket.OPEN) return false;
+        chatSocket.value.send(JSON.stringify({ type: 'edit_message', message_id: messageId, text }));
+        return true;
+    }
+
+    function deleteMessage(messageId: number): boolean {
+        if (!chatSocket.value || chatSocket.value.readyState !== WebSocket.OPEN) return false;
+        chatSocket.value.send(JSON.stringify({ type: 'delete_message', message_id: messageId }));
+        return true;
+    }
+
     function onMessage(conversationId: number, handler: MessageHandler) {
         if (!messageListeners.has(conversationId)) {
             messageListeners.set(conversationId, new Set());
@@ -181,14 +254,66 @@ export function useWebSocket() {
         statusListeners.delete(handler);
     }
 
+    function onMention(handler: MentionHandler) {
+        mentionListeners.add(handler);
+    }
+
+    function offMention(handler: MentionHandler) {
+        mentionListeners.delete(handler);
+    }
+
+    function onReadReceipt(handler: ReadReceiptHandler) {
+        readReceiptListeners.add(handler);
+    }
+
+    function offReadReceipt(handler: ReadReceiptHandler) {
+        readReceiptListeners.delete(handler);
+    }
+
+    function onError(handler: ErrorHandler) {
+        errorListeners.add(handler);
+    }
+
+    function offError(handler: ErrorHandler) {
+        errorListeners.delete(handler);
+    }
+
+    function onMessageEdited(handler: MessageEditedHandler) {
+        messageEditedListeners.add(handler);
+    }
+
+    function offMessageEdited(handler: MessageEditedHandler) {
+        messageEditedListeners.delete(handler);
+    }
+
+    function onMessageDeleted(handler: MessageDeletedHandler) {
+        messageDeletedListeners.add(handler);
+    }
+
+    function offMessageDeleted(handler: MessageDeletedHandler) {
+        messageDeletedListeners.delete(handler);
+    }
+
     return {
         isConnected: computed(() => isConnected.value),
         connect,
         disconnect,
         sendMessage,
+        editMessage,
+        deleteMessage,
         onMessage,
         offMessage,
+        onMessageEdited,
+        offMessageEdited,
+        onMessageDeleted,
+        offMessageDeleted,
         onStatus,
         offStatus,
+        onMention,
+        offMention,
+        onReadReceipt,
+        offReadReceipt,
+        onError,
+        offError,
     };
 }

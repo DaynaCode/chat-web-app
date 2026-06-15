@@ -12,7 +12,31 @@
     </div>
 
     <!-- Messages -->
-    <MessagesList :messages="messages" :isLoading="isLoading" />
+    <MessagesList
+      :messages="messages"
+      :isLoading="isLoading"
+      @delete="handleDelete"
+      @edit="handleEditRequest"
+      @reply="handleReplyRequest"
+    />
+
+    <!-- Reply / Edit banner -->
+    <div
+      v-if="replyTarget || editTarget"
+      class="w-full bg-primary-50 border-t border-primary-200 px-4 py-2 flex items-center justify-between gap-2 shrink-0"
+      dir="rtl"
+    >
+      <div class="flex items-center gap-2 min-w-0">
+        <IsIcon :name="editTarget ? 'pen' : 'undo'" class="size-4 text-primary-600 shrink-0" />
+        <div class="text-xs text-gray-600 truncate">
+          <span class="font-semibold text-primary-700">{{ editTarget ? 'ویرایش پیام' : `پاسخ به ${replyTarget?.sender.username}` }}</span>
+          <p class="truncate text-gray-500">{{ editTarget ? editTarget.text : replyTarget?.text }}</p>
+        </div>
+      </div>
+      <button @click="cancelContext" class="shrink-0 size-5">
+        <IsIcon name="close" class="text-gray-400 size-4" />
+      </button>
+    </div>
 
     <!-- Input -->
     <div class="w-full bg-white shadow-2xl p-3 flex items-start gap-2 border-t border-gray-200 shrink-0">
@@ -60,9 +84,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
+import { toast } from 'vue3-toastify';
 import { useMessages, useSendMessageRest } from '@/api/conversations';
 import { useConversations } from '@/api/conversations';
 import { useWebSocket } from '@/composables/useWebSocket';
@@ -78,20 +103,33 @@ const myId = computed(() => Number(jwt.value?.userId ?? 0));
 const { data: messagesPage, isLoading } = useMessages(conversationId);
 const { data: conversations } = useConversations();
 const { mutate: sendMessageRest } = useSendMessageRest(conversationId);
-const { onMessage, offMessage, onStatus, offStatus, sendMessage: wsSend, isConnected } = useWebSocket();
+const {
+  onMessage, offMessage,
+  onMessageEdited, offMessageEdited,
+  onMessageDeleted, offMessageDeleted,
+  onStatus, offStatus,
+  onError, offError,
+  sendMessage: wsSend,
+  editMessage: wsEdit,
+  deleteMessage: wsDelete,
+  isConnected,
+} = useWebSocket();
 const queryClient = useQueryClient();
 
 const messageText = ref('');
 const showProfile = ref(false);
 const onlineUserIds = ref<number[]>([]);
+const replyTarget = ref<IMessage | null>(null);
+const editTarget = ref<IMessage | null>(null);
 
 const messages = computed<IMessage[]>(() => {
   const data = messagesPage.value;
-  if (!data) return [];
-  // API returns plain array
-  if (Array.isArray(data)) return data;
-  // fallback if wrapped
-  return (data as any).results ?? [];
+  let list: IMessage[] = [];
+  if (!data) return list;
+  list = Array.isArray(data) ? data : ((data as any).results ?? []);
+  return [...list].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
 });
 
 const currentConversation = computed(() =>
@@ -101,7 +139,6 @@ const currentConversation = computed(() =>
 const otherParticipant = computed(() => {
   const conv = currentConversation.value;
   if (!conv || conv.type !== 'private') return null;
-  // cast both to Number to avoid type mismatch
   return conv.participants.find((p) => Number(p.id) !== myId.value) ?? null;
 });
 
@@ -120,20 +157,60 @@ const isOnline = computed(() =>
   onlineUserIds.value.includes(Number(otherParticipant.value.id))
 );
 
-function addMessage(msg: IMessage) {
+function updateCache(updater: (old: IMessage[]) => IMessage[]) {
   queryClient.setQueryData(
     ['messages', conversationId.value],
-    (old: IMessage[] | undefined) => {
-      const list = Array.isArray(old) ? old : (old as any)?.results ?? [];
-      const exists = list.some(
-        (m: IMessage) =>
-          m.id === msg.id ||
-          (msg.clientMessageId && m.clientMessageId === msg.clientMessageId)
-      );
-      if (exists) return list;
-      return [...list, msg];
-    }
+    (old: IMessage[] | undefined) => updater(Array.isArray(old) ? old : (old as any)?.results ?? [])
   );
+}
+
+function addMessage(msg: IMessage) {
+  updateCache((list) => {
+    const exists = list.some(
+      (m) => m.id === msg.id || (msg.clientMessageId && m.clientMessageId === msg.clientMessageId)
+    );
+    return exists ? list : [...list, msg];
+  });
+}
+
+function handleWsEdited({ id, text, editedAt }: { id: number; conversationId: number; text: string; editedAt: string }) {
+  updateCache((list) =>
+    list.map((m) => m.id === id ? { ...m, text, editedAt } : m)
+  );
+}
+
+function handleWsDeleted({ messageId }: { messageId: number; conversationId: number }) {
+  updateCache((list) => list.filter((m) => m.id !== messageId));
+}
+
+function handleDelete(id: number) {
+  const sent = wsDelete(id);
+  if (!sent) toast.error('اتصال WebSocket برقرار نیست', { rtl: true });
+}
+
+function handleEditRequest(id: number) {
+  const msg = messages.value.find((m) => m.id === id);
+  if (!msg) return;
+  editTarget.value = msg;
+  replyTarget.value = null;
+  messageText.value = msg.text ?? '';
+  nextTick(() => document.querySelector<HTMLTextAreaElement>('textarea')?.focus());
+}
+
+function handleReplyRequest(msg: IMessage) {
+  replyTarget.value = msg;
+  editTarget.value = null;
+  nextTick(() => document.querySelector<HTMLTextAreaElement>('textarea')?.focus());
+}
+
+function cancelContext() {
+  replyTarget.value = null;
+  editTarget.value = null;
+  messageText.value = '';
+}
+
+function handleWsError(detail: string) {
+  toast.error(detail, { rtl: true });
 }
 
 function handleStatus({ userId, status }: { userId: number; status: string }) {
@@ -147,11 +224,21 @@ function handleStatus({ userId, status }: { userId: number; status: string }) {
 function sendMsg() {
   const text = messageText.value.trim();
   if (!text) return;
+
+  if (editTarget.value) {
+    const id = editTarget.value.id;
+    const sent = wsEdit(id, text);
+    if (!sent) toast.error('اتصال WebSocket برقرار نیست', { rtl: true });
+    cancelContext();
+    return;
+  }
+
   messageText.value = '';
+  const repliedToId = replyTarget.value?.id ?? null;
+  replyTarget.value = null;
 
   if (isConnected.value) {
-    const clientMessageId = wsSend({ conversationId: conversationId.value, text });
-    // optimistic: add message immediately, server broadcast will dedup by clientMessageId
+    const clientMessageId = wsSend({ conversationId: conversationId.value, text, repliedToId });
     if (clientMessageId) {
       addMessage({
         id: -Date.now(),
@@ -167,8 +254,7 @@ function sendMsg() {
       });
     }
   } else {
-    // fallback: REST API
-    sendMessageRest({ text }, { onSuccess: (msg) => addMessage(msg) });
+    sendMessageRest({ text, repliedToId }, { onSuccess: (msg) => addMessage(msg) });
   }
 }
 
@@ -183,16 +269,23 @@ function unregisterWsHandlers(id: number) {
 onMounted(() => {
   registerWsHandlers(conversationId.value);
   onStatus(handleStatus);
+  onError(handleWsError);
+  onMessageEdited(handleWsEdited);
+  onMessageDeleted(handleWsDeleted);
 });
 
 onUnmounted(() => {
   unregisterWsHandlers(conversationId.value);
   offStatus(handleStatus);
+  offError(handleWsError);
+  offMessageEdited(handleWsEdited);
+  offMessageDeleted(handleWsDeleted);
 });
 
 watch(conversationId, (newId, oldId) => {
   unregisterWsHandlers(oldId);
   registerWsHandlers(newId);
+  cancelContext();
 });
 </script>
 

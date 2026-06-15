@@ -10,7 +10,12 @@
         :message="msg.text ?? ''"
         :time="formatTime(msg.createdAt)"
         :isMe="Number(msg.sender.id) === myId"
-        :senderId="msg.sender.id"
+        :messageId="msg.id"
+        :isEdited="!!msg.editedAt"
+        :repliedTo="msg.repliedTo ?? null"
+        @delete="$emit('delete', $event)"
+        @edit="$emit('edit', $event)"
+        @reply="$emit('reply', msg)"
       />
     </template>
     <div v-else class="flex justify-center py-8 text-sm text-gray-400" dir="rtl">
@@ -29,6 +34,12 @@ const props = defineProps<{
   isLoading?: boolean;
 }>();
 
+defineEmits<{
+  (e: 'delete', id: number): void;
+  (e: 'edit', id: number): void;
+  (e: 'reply', msg: IMessage): void;
+}>();
+
 const { jwt } = useJwtService();
 const myId = computed(() => Number(jwt.value?.userId ?? 0));
 const listEl = ref<HTMLElement | null>(null);
@@ -45,7 +56,11 @@ function scrollToBottom() {
   });
 }
 
-watch(() => props.messages.length, scrollToBottom, { immediate: true });
+watch(
+  () => props.messages.at(-1)?.id,
+  (newId, oldId) => { if (newId !== oldId) scrollToBottom(); },
+  { immediate: true }
+);
 </script>
 
 <style scoped>
