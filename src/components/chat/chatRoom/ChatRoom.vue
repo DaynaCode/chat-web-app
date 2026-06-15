@@ -166,10 +166,17 @@ function updateCache(updater: (old: IMessage[]) => IMessage[]) {
 
 function addMessage(msg: IMessage) {
   updateCache((list) => {
-    const exists = list.some(
-      (m) => m.id === msg.id || (msg.clientMessageId && m.clientMessageId === msg.clientMessageId)
-    );
-    return exists ? list : [...list, msg];
+    const optimisticIndex = msg.clientMessageId
+      ? list.findIndex((m) => m.clientMessageId === msg.clientMessageId)
+      : -1;
+    if (optimisticIndex !== -1) {
+      // Replace optimistic message with real server message (gets the correct ID)
+      const updated = [...list];
+      updated[optimisticIndex] = msg;
+      return updated;
+    }
+    if (list.some((m) => m.id === msg.id)) return list;
+    return [...list, msg];
   });
 }
 
