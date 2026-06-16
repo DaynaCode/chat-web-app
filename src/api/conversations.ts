@@ -77,3 +77,17 @@ export const useEditMessage = (conversationId: Ref<number> | number) => {
         },
     });
 };
+
+export const useUploadImage = () => {
+    return useMutation({
+        mutationFn: (file: File) => {
+            const formData = new FormData();
+            formData.append('file', file);
+            return api
+                .post<{ id: number; url: string }>('/upload/', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                })
+                .then((res) => res.data);
+        },
+    });
+};

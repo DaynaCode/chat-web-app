@@ -54,7 +54,7 @@ function normalizeMessage(raw: Record<string, any>): IMessage {
         createdAt: raw.createdAt ?? raw.created_at ?? '',
         editedAt: raw.editedAt ?? raw.edited_at ?? null,
         isDeleted: raw.isDeleted ?? raw.is_deleted ?? false,
-        repliedTo: null,
+        repliedTo: raw.repliedTo ?? raw.replied_to ?? null,
         clientMessageId: raw.clientMessageId ?? raw.client_message_id,
     };
 }

@@ -1,12 +1,32 @@
 <template>
-  <div class="bg-gray-50 w-full h-dvh flex flex-col overflow-hidden">
+  <div class="bg-gray-50 w-full h-full flex flex-col overflow-hidden">
     <!-- Header -->
-    <div class="bg-white w-full py-3 shadow-sm border-b border-gray-200 shrink-0">
-      <div class="flex gap-2 items-center cursor-pointer px-4" @click="showProfile = true">
-        <Avatar :label="conversationLabel.substring(0, 2)" class="text-sm!" shape="circle" size="large" />
-        <div dir="rtl">
-          <p class="text-sm font-bold">{{ conversationLabel }}</p>
-          <p v-if="isOnline" class="text-xs text-green-500">آنلاین</p>
+    <div class="bg-white/95 backdrop-blur-sm w-full shrink-0 border-b border-gray-100 shadow-sm">
+      <div class="flex items-center justify-between px-4 py-3">
+        <div class="flex items-center gap-3 cursor-pointer flex-1 min-w-0" @click="showProfile = true">
+          <div class="relative shrink-0">
+            <div class="size-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-700 flex items-center justify-center text-white text-sm font-semibold select-none">
+              {{ conversationLabel.substring(0, 2) }}
+            </div>
+            <span
+              v-if="isOnline"
+              class="absolute bottom-0 right-0 size-3 bg-green-400 rounded-full border-2 border-white"
+            />
+          </div>
+          <div dir="rtl" class="min-w-0">
+            <p class="text-sm font-bold text-gray-900 truncate">{{ conversationLabel }}</p>
+            <p v-if="isOnline" class="text-xs text-green-500 font-medium">آنلاین</p>
+            <p v-else-if="otherUsername" class="text-xs text-gray-400"><bdi>@{{ otherUsername }}</bdi></p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1 shrink-0">
+          <button class="size-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors">
+            <IsIcon name="search" class="size-4" />
+          </button>
+          <button class="size-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors">
+            <IsIcon name="more" class="size-4" />
+          </button>
         </div>
       </div>
     </div>
@@ -20,45 +40,71 @@
       @reply="handleReplyRequest"
     />
 
+    <!-- Image preview before send -->
+    <div
+      v-if="pendingImage"
+      class="shrink-0 px-4 py-2 bg-white border-t border-gray-100 flex items-center gap-3"
+      dir="rtl"
+    >
+      <div class="relative">
+        <img :src="pendingImagePreview!" class="size-16 rounded-xl object-cover border border-gray-200" />
+        <button
+          @click="clearPendingImage"
+          class="absolute -top-1.5 -right-1.5 size-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow"
+        >
+          <IsIcon name="close" class="size-3" />
+        </button>
+      </div>
+      <p class="text-xs text-gray-500">تصویر آماده ارسال</p>
+    </div>
+
     <!-- Reply / Edit banner -->
     <div
       v-if="replyTarget || editTarget"
-      class="w-full bg-primary-50 border-t border-primary-200 px-4 py-2 flex items-center justify-between gap-2 shrink-0"
+      class="w-full bg-primary-50 border-t border-primary-100 px-4 py-2 flex items-center justify-between gap-2 shrink-0"
       dir="rtl"
     >
       <div class="flex items-center gap-2 min-w-0">
-        <IsIcon :name="editTarget ? 'pen' : 'undo'" class="size-4 text-primary-600 shrink-0" />
+        <div :class="['w-0.5 h-8 rounded-full shrink-0', editTarget ? 'bg-amber-400' : 'bg-primary-500']" />
         <div class="text-xs text-gray-600 truncate">
-          <span class="font-semibold text-primary-700">{{ editTarget ? 'ویرایش پیام' : `پاسخ به ${replyTarget?.sender.username}` }}</span>
-          <p class="truncate text-gray-500">{{ editTarget ? editTarget.text : replyTarget?.text }}</p>
+          <span :class="['font-semibold block', editTarget ? 'text-amber-600' : 'text-primary-600']">
+            {{ editTarget ? 'ویرایش پیام' : `پاسخ به ${replyTarget?.sender.displayName || replyTarget?.sender.username}` }}
+          </span>
+          <p class="truncate text-gray-400 text-[11px]">{{ editTarget ? editTarget.text : replyTarget?.text }}</p>
         </div>
       </div>
-      <button @click="cancelContext" class="shrink-0 size-5">
-        <IsIcon name="close" class="text-gray-400 size-4" />
+      <button @click="cancelContext" class="shrink-0 size-6 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors">
+        <IsIcon name="close" class="text-gray-400 size-3" />
       </button>
     </div>
 
     <!-- Input -->
-    <div class="w-full bg-white shadow-2xl p-3 flex items-start gap-2 border-t border-gray-200 shrink-0">
-      <button
-        @click="sendMsg"
-        :disabled="!messageText.trim()"
-        class="w-10 h-10 bg-primary-800 rounded-full flex justify-center items-center cursor-pointer shrink-0 disabled:opacity-50"
-      >
-        <IsIcon name="send" class="rotate-90" />
-      </button>
+    <div class="w-full bg-white border-t border-gray-100 shadow-lg p-3 flex items-end gap-2 shrink-0">
+      <!-- File upload -->
+      <label class="w-9 h-9 flex justify-center items-center cursor-pointer shrink-0 rounded-xl text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors">
+        <IsIcon name="attachment" class="size-5" />
+        <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" ref="fileInput" @change="onFileChange" />
+      </label>
+
       <div class="flex-1">
         <Textarea
           v-model="messageText"
           autoResize
           rows="1"
-          class="w-full max-h-16 overflow-y-auto resize-none focus:ring-0"
+          placeholder="پیام بنویسید..."
+          class="w-full max-h-28 overflow-y-auto resize-none focus:ring-0 rounded-2xl! text-sm"
+          dir="rtl"
           @keydown.enter.exact.prevent="sendMsg"
         />
       </div>
-      <div class="w-10 h-10 flex justify-center items-center cursor-pointer shrink-0">
-        <IsIcon name="attachment" class="size-6 text-zinc-500" />
-      </div>
+
+      <button
+        @click="sendMsg"
+        :disabled="!messageText.trim() && !pendingImage"
+        class="w-9 h-9 bg-primary-700 hover:bg-primary-800 rounded-xl flex justify-center items-center cursor-pointer shrink-0 disabled:opacity-40 transition-colors shadow-sm"
+      >
+        <IsIcon name="send" class="rotate-90 size-4" />
+      </button>
     </div>
   </div>
 
@@ -72,10 +118,19 @@
           </button>
         </div>
         <div class="w-full flex flex-col justify-center items-center gap-3">
-          <Avatar :label="conversationLabel.substring(0, 2)" class="text-xl! bg-blue-100 text-blue-600" shape="circle" size="xlarge" />
+          <div class="relative">
+            <div class="size-20 rounded-full bg-gradient-to-br from-primary-400 to-primary-700 flex items-center justify-center text-white text-2xl font-bold select-none">
+              {{ conversationLabel.substring(0, 2) }}
+            </div>
+            <span
+              v-if="isOnline"
+              class="absolute bottom-1 right-1 size-3.5 bg-green-400 rounded-full border-2 border-white"
+            />
+          </div>
           <div class="text-center">
             <p class="text-lg font-bold text-gray-900">{{ conversationLabel }}</p>
             <p v-if="otherUsername" class="text-sm text-gray-400">@{{ otherUsername }}</p>
+            <span v-if="isOnline" class="mt-1 inline-block text-xs text-green-500 bg-green-50 px-2 py-0.5 rounded-full">آنلاین</span>
           </div>
         </div>
       </div>
@@ -88,7 +143,7 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
 import { toast } from 'vue3-toastify';
-import { useMessages, useSendMessageRest } from '@/api/conversations';
+import { useMessages, useSendMessageRest, useUploadImage } from '@/api/conversations';
 import { useConversations } from '@/api/conversations';
 import { useWebSocket } from '@/composables/useWebSocket';
 import { useJwtService } from '@/composables/useJwtService';
@@ -103,6 +158,7 @@ const myId = computed(() => Number(jwt.value?.userId ?? 0));
 const { data: messagesPage, isLoading } = useMessages(conversationId);
 const { data: conversations } = useConversations();
 const { mutate: sendMessageRest } = useSendMessageRest(conversationId);
+const { mutate: uploadImage, isPending: isUploading } = useUploadImage();
 const {
   onMessage, offMessage,
   onMessageEdited, offMessageEdited,
@@ -121,6 +177,9 @@ const showProfile = ref(false);
 const onlineUserIds = ref<number[]>([]);
 const replyTarget = ref<IMessage | null>(null);
 const editTarget = ref<IMessage | null>(null);
+const fileInput = ref<HTMLInputElement | null>(null);
+const pendingImage = ref<File | null>(null);
+const pendingImagePreview = ref<string | null>(null);
 
 const messages = computed<IMessage[]>(() => {
   const data = messagesPage.value;
@@ -133,7 +192,7 @@ const messages = computed<IMessage[]>(() => {
 });
 
 const currentConversation = computed(() =>
-  conversations.value?.find((c) => c.id === conversationId.value)
+  conversations.value?.find((c) => Number(c.id) === conversationId.value)
 );
 
 const otherParticipant = computed(() => {
@@ -170,7 +229,6 @@ function addMessage(msg: IMessage) {
       ? list.findIndex((m) => m.clientMessageId === msg.clientMessageId)
       : -1;
     if (optimisticIndex !== -1) {
-      // Replace optimistic message with real server message (gets the correct ID)
       const updated = [...list];
       updated[optimisticIndex] = msg;
       return updated;
@@ -228,21 +286,60 @@ function handleStatus({ userId, status }: { userId: number; status: string }) {
   }
 }
 
+function onFileChange(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    toast.error('فقط فایل‌های تصویری مجاز هستند', { rtl: true });
+    return;
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    toast.error('حجم تصویر نباید بیشتر از ۲ مگابایت باشد', { rtl: true });
+    return;
+  }
+  pendingImage.value = file;
+  pendingImagePreview.value = URL.createObjectURL(file);
+}
+
+function clearPendingImage() {
+  pendingImage.value = null;
+  pendingImagePreview.value = null;
+  if (fileInput.value) fileInput.value.value = '';
+}
+
 function sendMsg() {
   const text = messageText.value.trim();
-  if (!text) return;
+  if (!text && !pendingImage.value) return;
 
   if (editTarget.value) {
     const id = editTarget.value.id;
     const sent = wsEdit(id, text);
-    if (!sent) toast.error('اتصال WebSocket برقرار نیست', { rtl: true });
-    cancelContext();
+    if (sent) {
+      cancelContext();
+    } else {
+      toast.error('اتصال WebSocket برقرار نیست', { rtl: true });
+    }
     return;
   }
 
-  messageText.value = '';
   const repliedToId = replyTarget.value?.id ?? null;
   replyTarget.value = null;
+  messageText.value = '';
+
+  if (pendingImage.value) {
+    const imageFile = pendingImage.value;
+    clearPendingImage();
+    uploadImage(imageFile, {
+      onSuccess: (uploaded) => {
+        sendMessageRest(
+          { ...(text ? { text } : {}), repliedToId, imageId: uploaded.id },
+          { onSuccess: (msg) => addMessage(msg) }
+        );
+      },
+      onError: () => toast.error('آپلود تصویر ناموفق بود', { rtl: true }),
+    });
+    return;
+  }
 
   if (isConnected.value) {
     const clientMessageId = wsSend({ conversationId: conversationId.value, text, repliedToId });

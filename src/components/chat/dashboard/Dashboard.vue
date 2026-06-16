@@ -15,9 +15,9 @@
         </div>
         <div class="text-right leading-tight" dir="rtl">
           <p class="text-xs font-semibold text-gray-800 group-hover:text-primary-600 transition-colors">
-            {{ profile?.displayName || profile?.username || 'کاربر' }}
+            {{ profile?.displayName || myUsername || 'کاربر' }}
           </p>
-          <p class="text-[10px] text-gray-400 font-mono" dir="ltr">#{{ userId }}</p>
+          <p v-if="myUsername" class="text-[10px] text-gray-400 font-mono"><bdi>@{{ myUsername }}</bdi></p>
         </div>
       </button>
 
@@ -84,7 +84,7 @@
   </div>
 
   <!-- Profile Modal -->
-  <UserProfileModal v-model:visible="showProfile" :profile="profile" />
+  <UserProfileModal v-model:visible="showProfile" :profile="profile ?? undefined" :myUsername="myUsername" />
 </template>
 
 <script setup lang="ts">
@@ -92,7 +92,7 @@ import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { TActiveTabChat } from '@/types/chat';
 import { useJwtService } from '@/composables/useJwtService';
-import { useUserProfile } from '@/api/user';
+import { useUserProfile, useAuthMe } from '@/api/user';
 import { useLogout } from '@/api/auth';
 import { useWebSocket } from '@/composables/useWebSocket';
 import { usePublicUsers, useCreateConversation } from '@/api/publicUsers';
@@ -100,12 +100,18 @@ import { usePublicUsers, useCreateConversation } from '@/api/publicUsers';
 const router = useRouter();
 const { jwt } = useJwtService();
 const { data: profile } = useUserProfile();
+const { data: authMe } = useAuthMe();
 const { mutate: logout, isPending: isLogoutPending } = useLogout();
 const { disconnect } = useWebSocket();
 const { data: publicUsers } = usePublicUsers();
 const { mutate: createConversation, isPending: isCreating } = useCreateConversation();
 
 const userId = computed(() => jwt.value?.userId ?? 0);
+const myUsername = computed(() =>
+  authMe.value?.username ||
+  publicUsers.value?.find((u) => Number(u.id) === userId.value)?.username ||
+  ''
+);
 const activeTab = ref<TActiveTabChat>('all');
 const search = ref<string>('');
 const showProfile = ref(false);

@@ -24,7 +24,7 @@
                     </div>
                     <div class="mt-3 flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full">
                         <span class="font-medium text-gray-600">نام کاربری:</span>
-                        <span class="font-mono">{{ props.profile?.username }}</span>
+                        <span class="font-mono">{{ props.profile?.username || props.myUsername }}</span>
                     </div>
                 </div>
 
@@ -70,6 +70,7 @@ import type { IUserProfile } from '@/types/user';
 
 const props = defineProps<{
     profile: IUserProfile | undefined;
+    myUsername?: string;
 }>();
 
 const visible = defineModel<boolean>('visible');
@@ -78,6 +79,7 @@ const { mutate: updateProfile, isPending } = useUpdateUserProfile();
 const form = ref({ displayName: '', bio: '' });
 const errors = ref({ displayName: '' });
 const avatarPreview = ref<string | null>(null);
+const avatarFile = ref<File | null>(null);
 
 watch(
     () => props.profile,

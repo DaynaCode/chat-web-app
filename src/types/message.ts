@@ -24,7 +24,7 @@ export interface IMessagesPage {
 }
 
 export interface ISendMessage {
-    text: string;
+    text?: string;
     repliedToId?: number | null;
     imageId?: number | null;
 }
