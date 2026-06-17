@@ -50,7 +50,7 @@ function normalizeMessage(raw: Record<string, any>): IMessage {
             displayName: sender.displayName ?? sender.display_name ?? sender.username ?? '',
         },
         text: raw.text ?? null,
-        image: raw.image ?? null,
+        image: raw.image && typeof raw.image === 'object' ? (raw.image.url ?? null) : (raw.image ?? null),
         createdAt: raw.createdAt ?? raw.created_at ?? '',
         editedAt: raw.editedAt ?? raw.edited_at ?? null,
         isDeleted: raw.isDeleted ?? raw.is_deleted ?? false,

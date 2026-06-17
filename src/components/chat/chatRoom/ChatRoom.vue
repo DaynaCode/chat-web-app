@@ -328,13 +328,37 @@ function sendMsg() {
 
   if (pendingImage.value) {
     const imageFile = pendingImage.value;
+    const imagePreview = pendingImagePreview.value;
     clearPendingImage();
     uploadImage(imageFile, {
       onSuccess: (uploaded) => {
-        sendMessageRest(
-          { ...(text ? { text } : {}), repliedToId, imageId: uploaded.id },
-          { onSuccess: (msg) => addMessage(msg) }
-        );
+        if (isConnected.value) {
+          const clientMessageId = wsSend({
+            conversationId: conversationId.value,
+            text,
+            repliedToId,
+            imageId: uploaded.id,
+          });
+          if (clientMessageId) {
+            addMessage({
+              id: -Date.now(),
+              conversation: conversationId.value,
+              sender: { id: myId.value, username: '' },
+              text: text || null,
+              image: imagePreview,
+              createdAt: new Date().toISOString(),
+              editedAt: null,
+              isDeleted: false,
+              repliedTo: null,
+              clientMessageId,
+            });
+          }
+        } else {
+          sendMessageRest(
+            { ...(text ? { text } : {}), repliedToId, imageId: uploaded.id },
+            { onSuccess: (msg) => addMessage(msg) }
+          );
+        }
       },
       onError: () => toast.error('آپلود تصویر ناموفق بود', { rtl: true }),
     });
