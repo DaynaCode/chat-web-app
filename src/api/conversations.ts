@@ -4,6 +4,20 @@ import { useApi } from '@/composables/useApi';
 import type { IConversation } from '@/types/conversation';
 import type { IMessage, IMessagesPage, ISendMessage } from '@/types/message';
 
+const API_BASE = 'https://api.photoshade.ir';
+
+function resolveImageUrl(raw: any): string | null {
+    if (!raw) return null;
+    if (typeof raw === 'object') return resolveImageUrl(raw.url ?? raw.file ?? null);
+    if (typeof raw !== 'string') return null;
+    if (raw.startsWith('http')) return raw;
+    return `${API_BASE}${raw.startsWith('/') ? '' : '/'}${raw}`;
+}
+
+function normalizeMsg(msg: any): IMessage {
+    return { ...msg, image: resolveImageUrl(msg.image ?? msg.image_url ?? null) };
+}
+
 const api = useApi();
 
 export const useConversations = () => {
@@ -23,7 +37,7 @@ export const useMessages = (conversationId: Ref<number> | number) => {
                 .get<IMessage[]>(`/conversations/${idRef.value}/messages/`, {
                     params: { limit: 30 },
                 })
-                .then((res) => res.data),
+                .then((res) => (Array.isArray(res.data) ? res.data : (res.data as any).results ?? res.data).map(normalizeMsg)),
         enabled: computed(() => !!idRef.value),
     });
 };
@@ -39,7 +53,7 @@ export const useSendMessageRest = (conversationId: Ref<number> | number) => {
             if (payload.repliedToId != null) body.replied_to_id = payload.repliedToId;
             return api
                 .post<IMessage>(`/conversations/${idRef.value}/messages/`, body)
-                .then((res) => res.data);
+                .then((res) => normalizeMsg(res.data));
         },
         onSuccess: (newMsg) => {
             queryClient.setQueryData(

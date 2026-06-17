@@ -33,9 +33,19 @@ function getToken(): string {
     return get();
 }
 
+const API_BASE = 'https://api.photoshade.ir';
+
+function resolveImageUrl(raw: any): string | null {
+    if (!raw) return null;
+    if (typeof raw === 'object') return resolveImageUrl(raw.url ?? raw.file ?? null);
+    if (typeof raw !== 'string') return null;
+    if (raw.startsWith('http')) return raw;
+    return `${API_BASE}${raw.startsWith('/') ? '' : '/'}${raw}`;
+}
+
 // Normalize WS message: handle both camelCase and snake_case from server
 function normalizeMessage(raw: Record<string, any>): IMessage {
-    // server may use: conversationId, conversation_id, or conversation (FK int)
+    console.debug('[WS] raw message:', JSON.stringify(raw));
     const conversation = Number(
         raw.conversationId ?? raw.conversation_id ?? raw.conversation ?? 0
     );
@@ -50,7 +60,7 @@ function normalizeMessage(raw: Record<string, any>): IMessage {
             displayName: sender.displayName ?? sender.display_name ?? sender.username ?? '',
         },
         text: raw.text ?? null,
-        image: raw.image && typeof raw.image === 'object' ? (raw.image.url ?? null) : (raw.image ?? null),
+        image: resolveImageUrl(raw.image ?? raw.image_url ?? null),
         createdAt: raw.createdAt ?? raw.created_at ?? '',
         editedAt: raw.editedAt ?? raw.edited_at ?? null,
         isDeleted: raw.isDeleted ?? raw.is_deleted ?? false,
