@@ -32,10 +32,15 @@ export const useSendMessageRest = (conversationId: Ref<number> | number) => {
     const idRef = isRef(conversationId) ? conversationId : toRef(conversationId);
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (payload: ISendMessage) =>
-            api
-                .post<IMessage>(`/conversations/${idRef.value}/messages/`, payload)
-                .then((res) => res.data),
+        mutationFn: (payload: ISendMessage) => {
+            const body: Record<string, unknown> = {};
+            if (payload.text) body.text = payload.text;
+            if (payload.imageId != null) body.image_id = payload.imageId;
+            if (payload.repliedToId != null) body.replied_to_id = payload.repliedToId;
+            return api
+                .post<IMessage>(`/conversations/${idRef.value}/messages/`, body)
+                .then((res) => res.data);
+        },
         onSuccess: (newMsg) => {
             queryClient.setQueryData(
                 ['messages', idRef.value],
