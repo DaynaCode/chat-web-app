@@ -8,7 +8,10 @@ const API_BASE = 'https://api.photoshade.ir';
 
 function resolveImageUrl(raw: any): string | null {
     if (!raw) return null;
-    if (typeof raw === 'object') return resolveImageUrl(raw.url ?? raw.file ?? null);
+    if (typeof raw === 'object') {
+        const path = raw.originalUrl ?? raw.url ?? raw.file ?? null;
+        return resolveImageUrl(path);
+    }
     if (typeof raw !== 'string') return null;
     if (raw.startsWith('http')) return raw;
     return `${API_BASE}${raw.startsWith('/') ? '' : '/'}${raw}`;
