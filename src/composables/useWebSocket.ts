@@ -215,21 +215,17 @@ export function useWebSocket() {
     }): string | null {
         if (!chatSocket.value || chatSocket.value.readyState !== WebSocket.OPEN) return null;
         const clientMessageId = crypto.randomUUID();
-        chatSocket.value.send(
-            JSON.stringify({
-                type: 'send_message',
-                // send both forms to be safe
-                conversationId: payload.conversationId,
-                conversation_id: payload.conversationId,
-                text: payload.text,
-                imageId: payload.imageId ?? null,
-                image_id: payload.imageId ?? null,
-                repliedToId: payload.repliedToId ?? null,
-                replied_to_id: payload.repliedToId ?? null,
-                clientMessageId,
-                client_message_id: clientMessageId,
-            })
-        );
+        const wsPayload: Record<string, unknown> = {
+            type: 'send_message',
+            conversationId: payload.conversationId,
+            conversation_id: payload.conversationId,
+            clientMessageId,
+            client_message_id: clientMessageId,
+        };
+        if (payload.text) { wsPayload.text = payload.text; }
+        if (payload.imageId != null) { wsPayload.imageId = payload.imageId; wsPayload.image_id = payload.imageId; }
+        if (payload.repliedToId != null) { wsPayload.repliedToId = payload.repliedToId; wsPayload.replied_to_id = payload.repliedToId; }
+        chatSocket.value.send(JSON.stringify(wsPayload));
         return clientMessageId;
     }
 
