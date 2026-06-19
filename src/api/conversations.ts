@@ -110,42 +110,6 @@ export const useEditMessage = (conversationId: Ref<number> | number) => {
     });
 };
 
-export const useGetPins = (conversationId: Ref<number> | number) => {
-    const idRef = isRef(conversationId) ? conversationId : toRef(conversationId);
-    return useQuery({
-        queryKey: computed(() => ['pins', idRef.value]),
-        queryFn: () =>
-            api
-                .get<IMessage[]>(`/conversations/${idRef.value}/pins/`)
-                .then((res) => (Array.isArray(res.data) ? res.data : (res.data as any).results ?? res.data).map(normalizeMsg)),
-        enabled: computed(() => !!idRef.value),
-    });
-};
-
-export const usePinMessage = (conversationId: Ref<number> | number) => {
-    const idRef = isRef(conversationId) ? conversationId : toRef(conversationId);
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (messageId: number) =>
-            api.post(`/conversations/${idRef.value}/pins/`, { messageId }),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['pins', idRef.value] });
-        },
-    });
-};
-
-export const useUnpinMessage = (conversationId: Ref<number> | number) => {
-    const idRef = isRef(conversationId) ? conversationId : toRef(conversationId);
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (pinId: number) =>
-            api.delete(`/conversations/${idRef.value}/pins/${pinId}/`),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['pins', idRef.value] });
-        },
-    });
-};
-
 export const useUploadImage = () => {
     return useMutation({
         mutationFn: (file: File) => {
