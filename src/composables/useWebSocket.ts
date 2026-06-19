@@ -35,18 +35,25 @@ function getToken(): string {
 
 const API_BASE = 'https://api.photoshade.ir';
 
-function resolveImageUrl(raw: any): string | null {
-    if (!raw) return null;
+function toAbsoluteUrl(path: any): string | null {
+    if (!path || typeof path !== 'string') return null;
+    if (path.startsWith('http')) return path;
+    return `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
+}
+
+function extractImageUrls(raw: any): { thumbnail: string | null; original: string | null } {
+    if (!raw) return { thumbnail: null, original: null };
     if (typeof raw === 'object') {
-        // prefer originalUrl (actual file) over url (thumbnail)
-        const path = raw.originalUrl ?? raw.url ?? raw.file ?? null;
-        return resolveImageUrl(path);
+        return {
+            thumbnail: toAbsoluteUrl(raw.url ?? null),
+            original: toAbsoluteUrl(raw.originalUrl ?? raw.original_url ?? raw.url ?? null),
+        };
     }
-    if (typeof raw !== 'string') return null;
-    if (raw.startsWith('http')) return raw;
-    const resolved = `${API_BASE}${raw.startsWith('/') ? '' : '/'}${raw}`;
-    console.debug('[image] resolved URL:', resolved);
-    return resolved;
+    if (typeof raw === 'string') {
+        const abs = toAbsoluteUrl(raw);
+        return { thumbnail: abs, original: abs };
+    }
+    return { thumbnail: null, original: null };
 }
 
 // Normalize WS message: handle both camelCase and snake_case from server
@@ -56,6 +63,7 @@ function normalizeMessage(raw: Record<string, any>): IMessage {
         raw.conversationId ?? raw.conversation_id ?? raw.conversation ?? 0
     );
     const sender = raw.sender ?? {};
+    const { thumbnail, original } = extractImageUrls(raw.image ?? raw.image_url ?? null);
     return {
         id: raw.id,
         conversation,
@@ -66,7 +74,8 @@ function normalizeMessage(raw: Record<string, any>): IMessage {
             displayName: sender.displayName ?? sender.display_name ?? sender.username ?? '',
         },
         text: raw.text ?? null,
-        image: resolveImageUrl(raw.image ?? raw.image_url ?? null),
+        image: thumbnail,
+        imageOriginalUrl: original,
         createdAt: raw.createdAt ?? raw.created_at ?? '',
         editedAt: raw.editedAt ?? raw.edited_at ?? null,
         isDeleted: raw.isDeleted ?? raw.is_deleted ?? false,

@@ -24,6 +24,7 @@
           :isEdited="!!msg.editedAt"
           :repliedTo="msg.repliedTo ?? null"
           :imageUrl="msg.image"
+          :imageOriginalUrl="msg.imageOriginalUrl"
           @delete="$emit('delete', $event)"
           @edit="$emit('edit', $event)"
           @reply="$emit('reply', msg)"
