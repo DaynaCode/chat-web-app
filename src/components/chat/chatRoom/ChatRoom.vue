@@ -20,14 +20,6 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-1 shrink-0">
-          <button class="size-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors">
-            <IsIcon name="search" class="size-4" />
-          </button>
-          <button class="size-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors">
-            <IsIcon name="more" class="size-4" />
-          </button>
-        </div>
       </div>
     </div>
 
@@ -79,7 +71,7 @@
     </div>
 
     <!-- Input -->
-    <div class="w-full bg-white border-t border-gray-100 shadow-lg p-3 flex items-end gap-2 shrink-0">
+    <div class="w-full bg-white border-t border-gray-100 shadow-lg p-3 flex justify-between gap-2 shrink-0 ">
       <!-- File upload -->
       <label class="w-9 h-9 flex justify-center items-center cursor-pointer shrink-0 rounded-xl text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors">
         <IsIcon name="attachment" class="size-5" />
@@ -97,13 +89,12 @@
           @keydown.enter.exact.prevent="sendMsg"
         />
       </div>
-
       <button
         @click="sendMsg"
         :disabled="!messageText.trim() && !pendingImage"
         class="w-9 h-9 bg-primary-700 hover:bg-primary-800 rounded-xl flex justify-center items-center cursor-pointer shrink-0 disabled:opacity-40 transition-colors shadow-sm"
       >
-        <IsIcon name="send" class="rotate-90 size-4" />
+        <IsIcon name="send" class="-rotate-90" />
       </button>
     </div>
   </div>

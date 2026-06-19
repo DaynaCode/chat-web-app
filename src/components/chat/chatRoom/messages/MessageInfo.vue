@@ -58,14 +58,14 @@
             class="bg-white/80! border-0! shadow-sm! size-7! p-0! rounded-full!"
             @click="toggle"
           >
-            <IsIcon name="more" class="size-3.5 text-gray-500" />
+            <IsIcon name="more" class="text-gray-500 size-4" />
           </Button>
           <button
             v-else
             class="bg-white/80 hover:bg-white shadow-sm size-7 p-0 rounded-full flex items-center justify-center transition-colors"
             @click="$emit('reply')"
           >
-            <IsIcon name="undo" class="size-3.5 text-gray-500" />
+            <IsIcon name="undo" class="text-gray-500" />
           </button>
         </div>
       </div>

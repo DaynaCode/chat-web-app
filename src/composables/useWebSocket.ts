@@ -58,7 +58,6 @@ function extractImageUrls(raw: any): { thumbnail: string | null; original: strin
 
 // Normalize WS message: handle both camelCase and snake_case from server
 function normalizeMessage(raw: Record<string, any>): IMessage {
-    console.debug('[WS] raw message:', JSON.stringify(raw));
     const conversation = Number(
         raw.conversationId ?? raw.conversation_id ?? raw.conversation ?? 0
     );
