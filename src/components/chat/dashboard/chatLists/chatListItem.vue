@@ -1,7 +1,7 @@
 <template>
   <RouterLink
     :to="{ name: 'ChatRoom', params: { id: conversation.id } }"
-    class="flex gap-2 justify-between items-center p-1.5 rounded-md cursor-pointer hover:bg-primary-500 hover:text-white text-t-secondary transition-all ease-in"
+    class="group flex gap-2 justify-between items-center p-1.5 rounded-md cursor-pointer hover:bg-primary-500 hover:text-white text-t-secondary transition-all ease-in"
     active-class="bg-primary-600 text-white"
   >
     <div class="flex gap-2 items-center min-w-0">
@@ -16,12 +16,12 @@
       </OverlayBadge>
       <div class="min-w-0 flex-1" dir="rtl">
         <p class="text-sm font-medium truncate">{{ displayName }}</p>
-        <p v-if="conversation.lastMessage" class="text-xs text-gray-400 truncate">
+        <p v-if="conversation.lastMessage" class="text-xs text-gray-400 truncate group-hover:text-white group-[.router-link-exact-active]:text-white">
           {{ conversation.lastMessage.text }}
         </p>
       </div>
     </div>
-    <div class="shrink-0 text-[10px] text-gray-400 text-left">
+    <div class="shrink-0 text-[10px] text-gray-400 text-left group-hover:text-white group-[.router-link-exact-active]:text-white">
       <span v-if="conversation.lastMessage">
         {{ formatTime(conversation.lastMessage.createdAt) }}
       </span>
