@@ -33,9 +33,25 @@ function getToken(): string {
     return get();
 }
 
+const API_BASE = 'https://api.photoshade.ir';
+
+function resolveImageUrl(raw: any): string | null {
+    if (!raw) return null;
+    if (typeof raw === 'object') {
+        // prefer originalUrl (actual file) over url (thumbnail)
+        const path = raw.originalUrl ?? raw.url ?? raw.file ?? null;
+        return resolveImageUrl(path);
+    }
+    if (typeof raw !== 'string') return null;
+    if (raw.startsWith('http')) return raw;
+    const resolved = `${API_BASE}${raw.startsWith('/') ? '' : '/'}${raw}`;
+    console.debug('[image] resolved URL:', resolved);
+    return resolved;
+}
+
 // Normalize WS message: handle both camelCase and snake_case from server
 function normalizeMessage(raw: Record<string, any>): IMessage {
-    // server may use: conversationId, conversation_id, or conversation (FK int)
+    console.debug('[WS] raw message:', JSON.stringify(raw));
     const conversation = Number(
         raw.conversationId ?? raw.conversation_id ?? raw.conversation ?? 0
     );
@@ -50,11 +66,11 @@ function normalizeMessage(raw: Record<string, any>): IMessage {
             displayName: sender.displayName ?? sender.display_name ?? sender.username ?? '',
         },
         text: raw.text ?? null,
-        image: raw.image ?? null,
+        image: resolveImageUrl(raw.image ?? raw.image_url ?? null),
         createdAt: raw.createdAt ?? raw.created_at ?? '',
         editedAt: raw.editedAt ?? raw.edited_at ?? null,
         isDeleted: raw.isDeleted ?? raw.is_deleted ?? false,
-        repliedTo: null,
+        repliedTo: raw.repliedTo ?? raw.replied_to ?? null,
         clientMessageId: raw.clientMessageId ?? raw.client_message_id,
     };
 }
@@ -205,21 +221,17 @@ export function useWebSocket() {
     }): string | null {
         if (!chatSocket.value || chatSocket.value.readyState !== WebSocket.OPEN) return null;
         const clientMessageId = crypto.randomUUID();
-        chatSocket.value.send(
-            JSON.stringify({
-                type: 'send_message',
-                // send both forms to be safe
-                conversationId: payload.conversationId,
-                conversation_id: payload.conversationId,
-                text: payload.text,
-                imageId: payload.imageId ?? null,
-                image_id: payload.imageId ?? null,
-                repliedToId: payload.repliedToId ?? null,
-                replied_to_id: payload.repliedToId ?? null,
-                clientMessageId,
-                client_message_id: clientMessageId,
-            })
-        );
+        const wsPayload: Record<string, unknown> = {
+            type: 'send_message',
+            conversationId: payload.conversationId,
+            conversation_id: payload.conversationId,
+            clientMessageId,
+            client_message_id: clientMessageId,
+        };
+        if (payload.text) { wsPayload.text = payload.text; }
+        if (payload.imageId != null) { wsPayload.imageId = payload.imageId; wsPayload.image_id = payload.imageId; }
+        if (payload.repliedToId != null) { wsPayload.repliedToId = payload.repliedToId; wsPayload.replied_to_id = payload.repliedToId; }
+        chatSocket.value.send(JSON.stringify(wsPayload));
         return clientMessageId;
     }
 

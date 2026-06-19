@@ -8,7 +8,7 @@
     </div>
     <div
       v-if="showChat"
-      class="w-full"
+      class="flex-1 h-full min-w-0"
     >
       <router-view />
     </div>

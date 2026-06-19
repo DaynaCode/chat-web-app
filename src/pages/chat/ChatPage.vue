@@ -1,7 +1,7 @@
 <template>
-    <div class="bg-gray-50">
-       <ChatRoom/>
-    </div>
+    <ChatRoom/>
 </template>
 
-<script  setup lang="ts"></script>
+<script setup lang="ts">
+import ChatRoom from '@/components/chat/chatRoom/ChatRoom.vue';
+</script>

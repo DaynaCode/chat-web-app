@@ -1,8 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 import { useApi } from '@/composables/useApi';
-import type { IUserProfile, IUpdateUserProfile } from '@/types/user';
+import type { IUserProfile, IUpdateUserProfile, IAuthMe } from '@/types/user';
 
 const api = useApi();
+
+export const useAuthMe = () => {
+    return useQuery({
+        queryKey: ['auth-me'],
+        queryFn: () =>
+            api
+                .get<IAuthMe>('/auth/me/', { showErrorToast: false } as any)
+                .then((res) => res.data)
+                .catch(() => null),
+        retry: false,
+    });
+};
 
 export const useUserProfile = () => {
     return useQuery({
