@@ -14,21 +14,22 @@
           <div class="flex-1 h-px bg-gray-200/70" />
         </div>
 
-        <MessageInfo
-          v-for="msg in group.messages"
-          :key="msg.id"
-          :message="msg.text ?? ''"
-          :time="formatTime(msg.createdAt)"
-          :isMe="Number(msg.sender.id) === myId"
-          :messageId="msg.id"
-          :isEdited="!!msg.editedAt"
-          :repliedTo="msg.repliedTo ?? null"
-          :imageUrl="msg.image"
-          :imageOriginalUrl="msg.imageOriginalUrl"
-          @delete="$emit('delete', $event)"
-          @edit="$emit('edit', $event)"
-          @reply="$emit('reply', msg)"
-        />
+        <div :id="`msg-${msg.id}`" v-for="msg in group.messages" :key="msg.id">
+          <MessageInfo
+            :message="msg.text ?? ''"
+            :time="formatTime(msg.createdAt)"
+            :isMe="Number(msg.sender.id) === myId"
+            :messageId="msg.id"
+            :isEdited="!!msg.editedAt"
+            :repliedTo="msg.repliedTo ?? null"
+            :imageUrl="msg.image"
+            :imageOriginalUrl="msg.imageOriginalUrl"
+            @delete="$emit('delete', $event)"
+            @edit="$emit('edit', $event)"
+            @reply="$emit('reply', msg)"
+            @scrollToMessage="scrollToMessage"
+          />
+        </div>
       </template>
     </template>
     <div v-else class="flex justify-center py-8 text-sm text-gray-400" dir="rtl">
@@ -104,6 +105,16 @@ function scrollToBottom() {
   });
 }
 
+function scrollToMessage(id: number) {
+  nextTick(() => {
+    const el = document.getElementById(`msg-${id}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('highlight-message');
+    setTimeout(() => el.classList.remove('highlight-message'), 1500);
+  });
+}
+
 watch(
   () => props.messages.at(-1)?.id,
   (newId, oldId) => { if (newId !== oldId) scrollToBottom(); },
@@ -121,5 +132,14 @@ watch(
     radial-gradient(ellipse at 20% 20%, rgba(99, 102, 241, 0.06) 0%, transparent 60%),
     radial-gradient(ellipse at 80% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 60%),
     radial-gradient(ellipse at 50% 50%, rgba(59, 130, 246, 0.04) 0%, transparent 70%);
+}
+
+:global(.highlight-message) {
+  animation: highlightFade 1.5s ease-out;
+}
+
+@keyframes highlightFade {
+  0%   { background-color: rgba(99, 102, 241, 0.25); border-radius: 12px; }
+  100% { background-color: transparent; }
 }
 </style>

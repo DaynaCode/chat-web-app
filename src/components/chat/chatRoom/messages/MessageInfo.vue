@@ -22,6 +22,7 @@
                 : 'border-primary-500 bg-primary-50 text-gray-600'
             ]"
             dir="rtl"
+            @click="$emit('scrollToMessage', repliedTo!.id)"
           >
             <p :class="['font-semibold text-[11px] mb-0.5', isMe ? 'text-white/70' : 'text-primary-600']">
               {{ repliedTo.sender.displayName || repliedTo.sender.username }}
@@ -114,6 +115,7 @@ const emit = defineEmits<{
   (e: 'delete', id: number): void;
   (e: 'edit', id: number): void;
   (e: 'reply'): void;
+  (e: 'scrollToMessage', id: number): void;
 }>();
 
 const menu = ref();
