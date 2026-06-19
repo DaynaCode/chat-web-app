@@ -1,1 +1,1 @@
-export type TActiveTabChat = "private" | "group" | "all";
+export type TActiveTabChat = "private" | "group" | "all" | "favorites";

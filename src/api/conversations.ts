@@ -110,6 +110,38 @@ export const useEditMessage = (conversationId: Ref<number> | number) => {
     });
 };
 
+export const useGetFavorites = () => {
+    return useQuery({
+        queryKey: ['favorites'],
+        queryFn: () =>
+            api.get<IConversation[]>('/favorites/').then((res) =>
+                Array.isArray(res.data) ? res.data : (res.data as any).results ?? res.data
+            ),
+    });
+};
+
+export const useAddFavorite = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (conversationId: number) =>
+            api.post('/favorites/', { conversationId }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['favorites'] });
+        },
+    });
+};
+
+export const useRemoveFavorite = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (conversationId: number) =>
+            api.delete(`/favorites/${conversationId}/`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['favorites'] });
+        },
+    });
+};
+
 export const useUploadImage = () => {
     return useMutation({
         mutationFn: (file: File) => {

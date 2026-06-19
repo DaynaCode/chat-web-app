@@ -33,10 +33,11 @@
     </div>
 
     <!-- Tabs -->
-    <div class="h-14 border-b border-gray-200 flex items-center justify-around bg-white p-2 shrink-0">
+    <div class="h-14 border-b border-gray-200 flex items-center justify-around bg-white p-2 shrink-0 gap-1">
       <button @click="activeTab = 'all'" :class="tabClass('all')">همه</button>
       <button @click="activeTab = 'private'" :class="tabClass('private')">شخصی</button>
       <button @click="activeTab = 'group'" :class="tabClass('group')">گروه</button>
+      <button @click="activeTab = 'favorites'" :class="tabClass('favorites')">★</button>
     </div>
 
     <!-- Search -->

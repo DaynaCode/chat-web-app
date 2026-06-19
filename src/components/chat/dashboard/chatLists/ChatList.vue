@@ -9,6 +9,8 @@
         :key="conv.id"
         :conversation="conv"
         :onlineUserIds="onlineUserIds"
+        :isFavorite="favoriteIds.has(conv.id)"
+        @toggleFavorite="handleToggleFavorite"
       />
     </template>
     <div v-else class="flex flex-col items-center gap-2 py-8 text-gray-400 text-sm" dir="rtl">
@@ -20,8 +22,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useConversations } from '@/api/conversations';
+import { useConversations, useGetFavorites, useAddFavorite, useRemoveFavorite } from '@/api/conversations';
 import { useWebSocket } from '@/composables/useWebSocket';
+import { toast } from 'vue3-toastify';
 
 const props = defineProps<{
   search?: string;
@@ -29,13 +32,34 @@ const props = defineProps<{
 }>();
 
 const { data: conversations, isLoading } = useConversations();
+const { data: favorites } = useGetFavorites();
+const { mutate: addFavorite } = useAddFavorite();
+const { mutate: removeFavorite } = useRemoveFavorite();
 const { onStatus, offStatus } = useWebSocket();
 const onlineUserIds = ref<number[]>([]);
+
+const favoriteIds = computed(() => new Set((favorites.value ?? []).map((c) => c.id)));
+
+function handleToggleFavorite(conversationId: number) {
+  if (favoriteIds.value.has(conversationId)) {
+    removeFavorite(conversationId, {
+      onSuccess: () => toast.success('از علاقه‌مندی‌ها حذف شد', { rtl: true }),
+      onError: () => toast.error('خطا در حذف از علاقه‌مندی‌ها', { rtl: true }),
+    });
+  } else {
+    addFavorite(conversationId, {
+      onSuccess: () => toast.success('به علاقه‌مندی‌ها اضافه شد', { rtl: true }),
+      onError: () => toast.error('خطا در افزودن به علاقه‌مندی‌ها', { rtl: true }),
+    });
+  }
+}
 
 const filteredConversations = computed(() => {
   let list = conversations.value ?? [];
 
-  if (props.activeTab && props.activeTab !== 'all') {
+  if (props.activeTab === 'favorites') {
+    list = list.filter((c) => favoriteIds.value.has(c.id));
+  } else if (props.activeTab && props.activeTab !== 'all') {
     list = list.filter((c) => c.type === props.activeTab);
   }
 
