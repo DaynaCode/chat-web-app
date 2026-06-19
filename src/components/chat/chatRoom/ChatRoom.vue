@@ -35,9 +35,12 @@
     <MessagesList
       :messages="messages"
       :isLoading="isLoading"
+      :isFetchingMore="isFetchingNextPage"
+      :hasMore="hasNextPage"
       @delete="handleDelete"
       @edit="handleEditRequest"
       @reply="handleReplyRequest"
+      @loadMore="fetchNextPage"
     />
 
     <!-- Image preview before send -->
@@ -155,7 +158,7 @@ const conversationId = computed(() => Number(route.params.id));
 const { jwt } = useJwtService();
 const myId = computed(() => Number(jwt.value?.userId ?? 0));
 
-const { data: messagesPage, isLoading } = useMessages(conversationId);
+const { data: messagesPage, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useMessages(conversationId);
 const { data: conversations } = useConversations();
 const { mutate: sendMessageRest } = useSendMessageRest(conversationId);
 const { mutate: uploadImage, isPending: isUploading } = useUploadImage();
@@ -183,9 +186,8 @@ const pendingImagePreview = ref<string | null>(null);
 
 const messages = computed<IMessage[]>(() => {
   const data = messagesPage.value;
-  let list: IMessage[] = [];
-  if (!data) return list;
-  list = Array.isArray(data) ? data : ((data as any).results ?? []);
+  if (!data) return [];
+  const list = data.pages.flatMap((p) => p.results);
   return [...list].sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   );
@@ -219,7 +221,17 @@ const isOnline = computed(() =>
 function updateCache(updater: (old: IMessage[]) => IMessage[]) {
   queryClient.setQueryData(
     ['messages', conversationId.value],
-    (old: IMessage[] | undefined) => updater(Array.isArray(old) ? old : (old as any)?.results ?? [])
+    (old: any) => {
+      if (!old?.pages) return old;
+      const allMsgs: IMessage[] = old.pages.flatMap((p: any) => p.results);
+      const updated = updater(allMsgs);
+      // Keep oldest cursor (last page) so further pagination still works
+      const oldestCursor = old.pages[old.pages.length - 1]?.nextCursor ?? null;
+      return {
+        pages: [{ results: updated, nextCursor: oldestCursor }],
+        pageParams: [null],
+      };
+    }
   );
 }
 

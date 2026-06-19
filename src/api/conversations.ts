@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 import { computed, toRef, isRef, type Ref } from 'vue';
 import { useApi } from '@/composables/useApi';
 import type { IConversation } from '@/types/conversation';
@@ -44,14 +44,21 @@ export const useConversations = () => {
 
 export const useMessages = (conversationId: Ref<number> | number) => {
     const idRef = isRef(conversationId) ? conversationId : toRef(conversationId);
-    return useQuery({
+    return useInfiniteQuery({
         queryKey: computed(() => ['messages', idRef.value]),
-        queryFn: () =>
+        queryFn: ({ pageParam }: { pageParam: string | null }) =>
             api
-                .get<IMessage[]>(`/conversations/${idRef.value}/messages/`, {
-                    params: { limit: 30 },
+                .get<IMessage[] | IMessagesPage>(`/conversations/${idRef.value}/messages/`, {
+                    params: { limit: 30, ...(pageParam ? { cursor: pageParam } : {}) },
                 })
-                .then((res) => (Array.isArray(res.data) ? res.data : (res.data as any).results ?? res.data).map(normalizeMsg)),
+                .then((res) => {
+                    const raw = res.data as any;
+                    const results: IMessage[] = (Array.isArray(raw) ? raw : raw.results ?? []).map(normalizeMsg);
+                    const nextCursor: string | null = raw.next_cursor ?? raw.nextCursor ?? null;
+                    return { results, nextCursor } as IMessagesPage;
+                }),
+        initialPageParam: null as string | null,
+        getNextPageParam: (lastPage: IMessagesPage) => lastPage.nextCursor ?? null,
         enabled: computed(() => !!idRef.value),
     });
 };

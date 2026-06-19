@@ -1,9 +1,14 @@
 <template>
-  <div ref="listEl" class="flex-1 overflow-y-auto p-4 space-y-1 no-scrollbar chat-bg">
+  <div ref="listEl" class="flex-1 overflow-y-auto p-4 space-y-1 no-scrollbar chat-bg" @scroll.passive="onScroll">
     <div v-if="isLoading" class="flex justify-center py-8">
       <span class="size-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
     </div>
     <template v-else-if="groupedMessages.length">
+      <!-- Load more spinner at top -->
+      <div v-if="isFetchingMore" class="flex justify-center py-3">
+        <span class="size-5 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
+      </div>
+
       <template v-for="group in groupedMessages" :key="group.date">
         <!-- Date Separator -->
         <div class="flex items-center gap-3 my-4">
@@ -45,17 +50,21 @@ import type { IMessage } from '@/types/message';
 const props = defineProps<{
   messages: IMessage[];
   isLoading?: boolean;
+  isFetchingMore?: boolean;
+  hasMore?: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'delete', id: number): void;
   (e: 'edit', id: number): void;
   (e: 'reply', msg: IMessage): void;
+  (e: 'loadMore'): void;
 }>();
 
 const { jwt } = useJwtService();
 const myId = computed(() => Number(jwt.value?.userId ?? 0));
 const listEl = ref<HTMLElement | null>(null);
+const prevScrollHeight = ref(0);
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
@@ -103,6 +112,29 @@ function scrollToBottom() {
     }
   });
 }
+
+function onScroll() {
+  const el = listEl.value;
+  if (!el || props.isFetchingMore || !props.hasMore) return;
+  if (el.scrollTop < 80) {
+    prevScrollHeight.value = el.scrollHeight;
+    emit('loadMore');
+  }
+}
+
+// After older messages are prepended, restore scroll so user stays at same position
+watch(
+  () => props.isFetchingMore,
+  (fetching, wasFetching) => {
+    if (wasFetching && !fetching) {
+      nextTick(() => {
+        if (listEl.value) {
+          listEl.value.scrollTop = listEl.value.scrollHeight - prevScrollHeight.value;
+        }
+      });
+    }
+  }
+);
 
 watch(
   () => props.messages.at(-1)?.id,
