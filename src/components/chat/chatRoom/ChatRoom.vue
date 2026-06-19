@@ -187,8 +187,13 @@ const pendingImagePreview = ref<string | null>(null);
 const messages = computed<IMessage[]>(() => {
   const data = messagesPage.value;
   if (!data) return [];
-  const list = data.pages.flatMap((p) => p.results);
-  return [...list].sort(
+  const seen = new Set<number>();
+  const list = data.pages.flatMap((p) => p.results).filter((m) => {
+    if (seen.has(m.id)) return false;
+    seen.add(m.id);
+    return true;
+  });
+  return list.sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   );
 });
@@ -223,14 +228,11 @@ function updateCache(updater: (old: IMessage[]) => IMessage[]) {
     ['messages', conversationId.value],
     (old: any) => {
       if (!old?.pages) return old;
-      const allMsgs: IMessage[] = old.pages.flatMap((p: any) => p.results);
-      const updated = updater(allMsgs);
-      // Keep oldest cursor (last page) so further pagination still works
-      const oldestCursor = old.pages[old.pages.length - 1]?.nextCursor ?? null;
-      return {
-        pages: [{ results: updated, nextCursor: oldestCursor }],
-        pageParams: [null],
-      };
+      // Only mutate the last page (most recent) to preserve pagination state
+      const pages = [...old.pages];
+      const lastIdx = pages.length - 1;
+      pages[lastIdx] = { ...pages[lastIdx], results: updater(pages[lastIdx].results) };
+      return { ...old, pages };
     }
   );
 }
