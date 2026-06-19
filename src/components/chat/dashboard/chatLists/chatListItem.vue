@@ -16,12 +16,12 @@
       </OverlayBadge>
       <div class="min-w-0 flex-1" dir="rtl">
         <p class="text-sm font-medium truncate">{{ displayName }}</p>
-        <p v-if="conversation.lastMessage" class="text-xs text-gray-400 truncate group-hover:text-white group-[.router-link-active]:text-white">
+        <p v-if="conversation.lastMessage" class="text-xs text-gray-400 truncate group-hover:text-white group-[.router-link-exact-active]:text-white">
           {{ conversation.lastMessage.text }}
         </p>
       </div>
     </div>
-    <div class="shrink-0 text-[10px] text-gray-400 text-left group-hover:text-white group-[.router-link-active]:text-white">
+    <div class="shrink-0 text-[10px] text-gray-400 text-left group-hover:text-white group-[.router-link-exact-active]:text-white">
       <span v-if="conversation.lastMessage">
         {{ formatTime(conversation.lastMessage.createdAt) }}
       </span>
