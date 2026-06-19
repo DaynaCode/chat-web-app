@@ -27,9 +27,42 @@ function extractImageUrls(raw: any): { thumbnail: string | null; original: strin
     return { thumbnail: null, original: null };
 }
 
+function normalizeSender(s: any) {
+    if (!s) return { id: 0, username: '', displayName: '' };
+    return {
+        id: Number(s.id ?? 0),
+        username: s.username ?? '',
+        displayName: s.displayName ?? s.display_name ?? s.username ?? '',
+    };
+}
+
 function normalizeMsg(msg: any): IMessage {
     const { thumbnail, original } = extractImageUrls(msg.image ?? msg.image_url ?? null);
-    return { ...msg, image: thumbnail, imageOriginalUrl: original };
+    const rawRepliedTo = msg.repliedTo ?? msg.replied_to ?? null;
+    let repliedTo: IMessage | null = null;
+    if (rawRepliedTo) {
+        const { thumbnail: rt, original: ro } = extractImageUrls(rawRepliedTo.image ?? rawRepliedTo.image_url ?? null);
+        repliedTo = {
+            ...rawRepliedTo,
+            sender: normalizeSender(rawRepliedTo.sender),
+            image: rt,
+            imageOriginalUrl: ro,
+            repliedTo: null,
+            createdAt: rawRepliedTo.createdAt ?? rawRepliedTo.created_at ?? '',
+            editedAt: rawRepliedTo.editedAt ?? rawRepliedTo.edited_at ?? null,
+            isDeleted: rawRepliedTo.isDeleted ?? rawRepliedTo.is_deleted ?? false,
+        };
+    }
+    return {
+        ...msg,
+        sender: normalizeSender(msg.sender),
+        image: thumbnail,
+        imageOriginalUrl: original,
+        createdAt: msg.createdAt ?? msg.created_at ?? '',
+        editedAt: msg.editedAt ?? msg.edited_at ?? null,
+        isDeleted: msg.isDeleted ?? msg.is_deleted ?? false,
+        repliedTo,
+    };
 }
 
 const api = useApi();
