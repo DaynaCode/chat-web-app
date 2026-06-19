@@ -6,19 +6,30 @@ import type { IMessage, IMessagesPage, ISendMessage } from '@/types/message';
 
 const API_BASE = 'https://api.photoshade.ir';
 
-function resolveImageUrl(raw: any): string | null {
-    if (!raw) return null;
+function toAbsoluteUrl(path: any): string | null {
+    if (!path || typeof path !== 'string') return null;
+    if (path.startsWith('http')) return path;
+    return `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
+}
+
+function extractImageUrls(raw: any): { thumbnail: string | null; original: string | null } {
+    if (!raw) return { thumbnail: null, original: null };
     if (typeof raw === 'object') {
-        const path = raw.originalUrl ?? raw.original_url ?? raw.url ?? raw.file ?? raw.file_url ?? null;
-        return resolveImageUrl(path);
+        return {
+            thumbnail: toAbsoluteUrl(raw.url ?? null),
+            original: toAbsoluteUrl(raw.originalUrl ?? raw.original_url ?? raw.url ?? null),
+        };
     }
-    if (typeof raw !== 'string') return null;
-    if (raw.startsWith('http')) return raw;
-    return `${API_BASE}${raw.startsWith('/') ? '' : '/'}${raw}`;
+    if (typeof raw === 'string') {
+        const abs = toAbsoluteUrl(raw);
+        return { thumbnail: abs, original: abs };
+    }
+    return { thumbnail: null, original: null };
 }
 
 function normalizeMsg(msg: any): IMessage {
-    return { ...msg, image: resolveImageUrl(msg.image ?? msg.image_url ?? null) };
+    const { thumbnail, original } = extractImageUrls(msg.image ?? msg.image_url ?? null);
+    return { ...msg, image: thumbnail, imageOriginalUrl: original };
 }
 
 const api = useApi();

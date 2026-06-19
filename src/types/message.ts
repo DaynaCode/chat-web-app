@@ -11,6 +11,7 @@ export interface IMessage {
     sender: IMessageSender;
     text: string | null;
     image: string | null;
+    imageOriginalUrl: string | null;
     createdAt: string;
     editedAt: string | null;
     isDeleted: boolean;

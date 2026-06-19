@@ -91,7 +91,7 @@
     class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
     @click="lightboxOpen = false"
   >
-    <img :src="imageUrl ?? ''" class="max-w-[90vw] max-h-[90vh] rounded-xl object-contain" />
+    <img :src="imageOriginalUrl ?? imageUrl ?? ''" class="max-w-[90vw] max-h-[90vh] rounded-xl object-contain" />
   </div>
 </template>
 
@@ -107,6 +107,7 @@ const props = defineProps<{
   isEdited?: boolean;
   repliedTo?: IMessage | null;
   imageUrl?: string | null;
+  imageOriginalUrl?: string | null;
 }>();
 
 const emit = defineEmits<{
