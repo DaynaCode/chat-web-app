@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 import { useApi } from '@/composables/useApi';
 import type { IConversation } from '@/types/conversation';
+import type { ComputedRef } from 'vue';
 
 export interface IPublicUser {
     id: number;
@@ -19,6 +20,16 @@ export const usePublicUsers = () => {
     });
 };
 
+
+export const usePublicUserDetail = (userId: ComputedRef<number | null>) => {
+    return useQuery({
+        queryKey: ['public-user-detail', userId],
+        queryFn: () =>
+            api.get<IPublicUser>(`/public-users/${userId.value}/`).then((res) => res.data),
+        enabled: () => (userId.value ?? 0) > 0,
+        retry: false,
+    });
+};
 
 export const useCreateConversation = () => {
     const queryClient = useQueryClient();
