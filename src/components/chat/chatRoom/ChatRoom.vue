@@ -119,8 +119,9 @@
         </div>
         <div class="w-full flex flex-col justify-center items-center gap-3">
           <div class="relative">
-            <div class="size-20 rounded-full bg-gradient-to-br from-primary-400 to-primary-700 flex items-center justify-center text-white text-2xl font-bold select-none">
-              {{ conversationLabel.substring(0, 2) }}
+            <div class="size-20 rounded-full bg-gradient-to-br from-primary-400 to-primary-700 flex items-center justify-center text-white text-2xl font-bold select-none overflow-hidden">
+              <img v-if="otherUserProfile?.avatar" :src="otherUserProfile.avatar" class="size-full object-cover" />
+              <span v-else>{{ conversationLabel.substring(0, 2) }}</span>
             </div>
             <span
               v-if="isOnline"
@@ -131,6 +132,9 @@
             <p class="text-lg font-bold text-gray-900">{{ conversationLabel }}</p>
             <p v-if="otherUsername" class="text-sm text-gray-400">@{{ otherUsername }}</p>
             <span v-if="isOnline" class="mt-1 inline-block text-xs text-green-500 bg-green-50 px-2 py-0.5 rounded-full">آنلاین</span>
+          </div>
+          <div v-if="otherUserProfile?.bio" class="w-full mt-1 bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-600 text-center leading-relaxed border border-gray-100">
+            {{ otherUserProfile.bio }}
           </div>
         </div>
       </div>
@@ -145,6 +149,7 @@ import { useQueryClient } from '@tanstack/vue-query';
 import { toast } from 'vue3-toastify';
 import { useMessages, useSendMessageRest, useUploadImage } from '@/api/conversations';
 import { useConversations } from '@/api/conversations';
+import { usePublicUserProfile } from '@/api/publicUsers';
 import { useWebSocket } from '@/composables/useWebSocket';
 import { useJwtService } from '@/composables/useJwtService';
 import type { IMessage } from '@/types/message';
@@ -210,6 +215,11 @@ const conversationLabel = computed(() => {
 });
 
 const otherUsername = computed(() => otherParticipant.value?.username ?? null);
+
+const otherParticipantId = computed(() =>
+  otherParticipant.value ? Number(otherParticipant.value.id) : null
+);
+const { data: otherUserProfile } = usePublicUserProfile(otherParticipantId);
 
 const isOnline = computed(() =>
   otherParticipant.value != null &&
