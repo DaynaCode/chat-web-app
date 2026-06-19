@@ -1,4 +1,4 @@
-import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 import { computed, toRef, isRef, type Ref } from 'vue';
 import { useApi } from '@/composables/useApi';
 import type { IConversation } from '@/types/conversation';
@@ -45,22 +45,12 @@ export const useConversations = () => {
 
 export const useMessages = (conversationId: Ref<number> | number) => {
     const idRef = isRef(conversationId) ? conversationId : toRef(conversationId);
-    return useInfiniteQuery({
+    return useQuery({
         queryKey: computed(() => ['messages', idRef.value]),
-        queryFn: ({ pageParam }: { pageParam: number }) =>
+        queryFn: () =>
             api
-                .get<IMessage[]>(`/conversations/${idRef.value}/messages/`, {
-                    params: { limit: 30, offset: pageParam },
-                })
-                .then((res) => {
-                    const raw = res.data as any;
-                    const results: IMessage[] = (Array.isArray(raw) ? raw : raw.results ?? []).map(normalizeMsg);
-                    // If we got fewer than 30 results there are no more older messages
-                    const hasMore = results.length === 30;
-                    return { results, nextCursor: hasMore ? String(pageParam + 30) : null } as IMessagesPage;
-                }),
-        initialPageParam: 0,
-        getNextPageParam: (lastPage: IMessagesPage) => lastPage.nextCursor ? Number(lastPage.nextCursor) : null,
+                .get<IMessage[]>(`/conversations/${idRef.value}/messages/`)
+                .then((res) => (Array.isArray(res.data) ? res.data : (res.data as any).results ?? res.data).map(normalizeMsg)),
         enabled: computed(() => !!idRef.value),
     });
 };

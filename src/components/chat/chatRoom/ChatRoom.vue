@@ -35,12 +35,9 @@
     <MessagesList
       :messages="messages"
       :isLoading="isLoading"
-      :isFetchingMore="isFetchingNextPage"
-      :hasMore="hasNextPage"
       @delete="handleDelete"
       @edit="handleEditRequest"
       @reply="handleReplyRequest"
-      @loadMore="fetchNextPage"
     />
 
     <!-- Image preview before send -->
@@ -158,7 +155,7 @@ const conversationId = computed(() => Number(route.params.id));
 const { jwt } = useJwtService();
 const myId = computed(() => Number(jwt.value?.userId ?? 0));
 
-const { data: messagesPage, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useMessages(conversationId);
+const { data: messagesPage, isLoading } = useMessages(conversationId);
 const { data: conversations } = useConversations();
 const { mutate: sendMessageRest } = useSendMessageRest(conversationId);
 const { mutate: uploadImage, isPending: isUploading } = useUploadImage();
@@ -186,14 +183,10 @@ const pendingImagePreview = ref<string | null>(null);
 
 const messages = computed<IMessage[]>(() => {
   const data = messagesPage.value;
-  if (!data) return [];
-  const seen = new Set<number>();
-  const list = data.pages.flatMap((p) => p.results).filter((m) => {
-    if (seen.has(m.id)) return false;
-    seen.add(m.id);
-    return true;
-  });
-  return list.sort(
+  let list: IMessage[] = [];
+  if (!data) return list;
+  list = Array.isArray(data) ? data : ((data as any).results ?? []);
+  return [...list].sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   );
 });
@@ -226,14 +219,7 @@ const isOnline = computed(() =>
 function updateCache(updater: (old: IMessage[]) => IMessage[]) {
   queryClient.setQueryData(
     ['messages', conversationId.value],
-    (old: any) => {
-      if (!old?.pages) return old;
-      // Only mutate the last page (most recent) to preserve pagination state
-      const pages = [...old.pages];
-      const lastIdx = pages.length - 1;
-      pages[lastIdx] = { ...pages[lastIdx], results: updater(pages[lastIdx].results) };
-      return { ...old, pages };
-    }
+    (old: IMessage[] | undefined) => updater(Array.isArray(old) ? old : (old as any)?.results ?? [])
   );
 }
 
