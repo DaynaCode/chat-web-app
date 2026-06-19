@@ -149,7 +149,7 @@ import { useQueryClient } from '@tanstack/vue-query';
 import { toast } from 'vue3-toastify';
 import { useMessages, useSendMessageRest, useUploadImage } from '@/api/conversations';
 import { useConversations } from '@/api/conversations';
-import { usePublicUserProfile } from '@/api/publicUsers';
+import { usePublicUsers } from '@/api/publicUsers';
 import { useWebSocket } from '@/composables/useWebSocket';
 import { useJwtService } from '@/composables/useJwtService';
 import type { IMessage } from '@/types/message';
@@ -216,10 +216,12 @@ const conversationLabel = computed(() => {
 
 const otherUsername = computed(() => otherParticipant.value?.username ?? null);
 
-const otherParticipantId = computed(() =>
-  otherParticipant.value ? Number(otherParticipant.value.id) : null
-);
-const { data: otherUserProfile } = usePublicUserProfile(otherParticipantId);
+const { data: publicUsers } = usePublicUsers();
+const otherUserProfile = computed(() => {
+  const id = otherParticipant.value ? Number(otherParticipant.value.id) : null;
+  if (!id || !publicUsers.value) return null;
+  return publicUsers.value.find((u) => u.id === id) ?? null;
+});
 
 const isOnline = computed(() =>
   otherParticipant.value != null &&
