@@ -121,7 +121,7 @@ const filteredUsers = computed(() => {
   if (!q || !publicUsers.value) return [];
   return publicUsers.value.filter(
     (u) =>
-      u.id !== userId.value &&
+      Number(u.id) !== Number(userId.value) &&
       (u.username.toLowerCase().includes(q) ||
         u.displayName?.toLowerCase().includes(q))
   );
