@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 import { useApi } from '@/composables/useApi';
 import type { IUserProfile, IUpdateUserProfile, IAuthMe } from '@/types/user';
+import type { ComputedRef } from 'vue';
 
 const api = useApi();
 
@@ -20,6 +21,16 @@ export const useUserProfile = () => {
     return useQuery({
         queryKey: ['user-profile'],
         queryFn: () => api.get<IUserProfile>('/profile/').then((res) => res.data),
+    });
+};
+
+export const usePublicProfile = (username: ComputedRef<string | null>) => {
+    return useQuery({
+        queryKey: ['public-profile', username],
+        queryFn: () =>
+            api.get<IUserProfile>(`/profile/${username.value}/`).then((res) => res.data),
+        enabled: () => !!username.value,
+        retry: false,
     });
 };
 
