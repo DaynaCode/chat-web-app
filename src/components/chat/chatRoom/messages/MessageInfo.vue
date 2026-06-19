@@ -52,7 +52,6 @@
         <!-- Actions -->
         <div class="flex flex-col gap-1 mb-1">
           <Button
-            v-if="isMe"
             type="button"
             aria-haspopup="true"
             class="bg-white/80! border-0! shadow-sm! size-7! p-0! rounded-full!"
@@ -60,13 +59,6 @@
           >
             <IsIcon name="more" class="size-3.5 text-gray-500" />
           </Button>
-          <button
-            v-else
-            class="bg-white/80 hover:bg-white shadow-sm size-7 p-0 rounded-full flex items-center justify-center transition-colors"
-            @click="$emit('reply')"
-          >
-            <IsIcon name="undo" class="size-3.5 text-gray-500" />
-          </button>
         </div>
       </div>
     </div>
@@ -105,6 +97,7 @@ const props = defineProps<{
   isMe: boolean;
   messageId: number;
   isEdited?: boolean;
+  isPinned?: boolean;
   repliedTo?: IMessage | null;
   imageUrl?: string | null;
   imageOriginalUrl?: string | null;
@@ -114,28 +107,34 @@ const emit = defineEmits<{
   (e: 'delete', id: number): void;
   (e: 'edit', id: number): void;
   (e: 'reply'): void;
+  (e: 'pin', id: number): void;
+  (e: 'unpin', id: number): void;
 }>();
 
 const menu = ref();
 const lightboxOpen = ref(false);
 
-const items = computed(() => [
-  {
-    label: 'پاسخ',
-    icon: 'undo',
-    command: () => emit('reply'),
-  },
-  {
-    label: 'ویرایش',
-    icon: 'pen',
-    command: () => emit('edit', props.messageId),
-  },
-  {
-    label: 'حذف',
-    icon: 'trash',
-    command: () => emit('delete', props.messageId),
-  },
-]);
+const items = computed(() => {
+  const base = [
+    {
+      label: 'پاسخ',
+      icon: 'undo',
+      command: () => emit('reply'),
+    },
+    {
+      label: props.isPinned ? 'برداشتن پین' : 'سنجاق کردن',
+      icon: 'pin',
+      command: () => props.isPinned ? emit('unpin', props.messageId) : emit('pin', props.messageId),
+    },
+  ];
+  if (props.isMe) {
+    base.push(
+      { label: 'ویرایش', icon: 'pen', command: () => emit('edit', props.messageId) },
+      { label: 'حذف', icon: 'trash', command: () => emit('delete', props.messageId) },
+    );
+  }
+  return base;
+});
 
 const toggle = (event: Event) => {
   menu.value.toggle(event);

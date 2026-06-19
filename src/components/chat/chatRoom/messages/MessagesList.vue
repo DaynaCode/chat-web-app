@@ -22,12 +22,15 @@
           :isMe="Number(msg.sender.id) === myId"
           :messageId="msg.id"
           :isEdited="!!msg.editedAt"
+          :isPinned="pinnedIds.has(msg.id)"
           :repliedTo="msg.repliedTo ?? null"
           :imageUrl="msg.image"
           :imageOriginalUrl="msg.imageOriginalUrl"
           @delete="$emit('delete', $event)"
           @edit="$emit('edit', $event)"
           @reply="$emit('reply', msg)"
+          @pin="$emit('pin', $event)"
+          @unpin="$emit('unpin', $event)"
         />
       </template>
     </template>
@@ -45,13 +48,18 @@ import type { IMessage } from '@/types/message';
 const props = defineProps<{
   messages: IMessage[];
   isLoading?: boolean;
+  pinnedIds?: Set<number>;
 }>();
 
 defineEmits<{
   (e: 'delete', id: number): void;
   (e: 'edit', id: number): void;
   (e: 'reply', msg: IMessage): void;
+  (e: 'pin', id: number): void;
+  (e: 'unpin', id: number): void;
 }>();
+
+const pinnedIds = computed(() => props.pinnedIds ?? new Set<number>());
 
 const { jwt } = useJwtService();
 const myId = computed(() => Number(jwt.value?.userId ?? 0));

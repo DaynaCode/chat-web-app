@@ -21,6 +21,17 @@
         </div>
 
         <div class="flex items-center gap-1 shrink-0">
+          <button
+            v-if="pins && pins.length"
+            @click="showPins = true"
+            class="size-9 rounded-xl flex items-center justify-center text-primary-600 hover:bg-primary-50 transition-colors relative"
+            title="پیام‌های سنجاق‌شده"
+          >
+            <IsIcon name="pin" class="size-4" />
+            <span class="absolute -top-0.5 -right-0.5 size-4 bg-primary-600 text-white text-[9px] rounded-full flex items-center justify-center font-bold">
+              {{ pins.length }}
+            </span>
+          </button>
           <button class="size-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors">
             <IsIcon name="search" class="size-4" />
           </button>
@@ -31,13 +42,30 @@
       </div>
     </div>
 
+    <!-- Pinned message mini-banner -->
+    <div
+      v-if="pins && pins.length && !showPins"
+      @click="showPins = true"
+      class="shrink-0 flex items-center gap-2 px-4 py-2 bg-primary-50 border-b border-primary-100 cursor-pointer hover:bg-primary-100 transition-colors"
+      dir="rtl"
+    >
+      <IsIcon name="pin" class="size-3.5 text-primary-600 shrink-0" />
+      <p class="text-xs text-primary-700 truncate flex-1">
+        <span class="font-semibold">{{ pins.length }} پیام سنجاق‌شده: </span>
+        {{ pins[pins.length - 1]?.text || '📷 تصویر' }}
+      </p>
+    </div>
+
     <!-- Messages -->
     <MessagesList
       :messages="messages"
       :isLoading="isLoading"
+      :pinnedIds="pinnedIds"
       @delete="handleDelete"
       @edit="handleEditRequest"
       @reply="handleReplyRequest"
+      @pin="handlePin"
+      @unpin="handleUnpin"
     />
 
     <!-- Image preview before send -->
@@ -108,6 +136,15 @@
     </div>
   </div>
 
+  <!-- Pinned Messages Panel -->
+  <PinnedMessagesPanel
+    v-if="showPins"
+    :pins="pins ?? []"
+    :isLoading="pinsLoading"
+    @close="showPins = false"
+    @unpin="handleUnpin"
+  />
+
   <!-- Contact Profile Modal -->
   <AppModal v-model:visible="showProfile">
     <template #container>
@@ -143,10 +180,11 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
 import { toast } from 'vue3-toastify';
-import { useMessages, useSendMessageRest, useUploadImage } from '@/api/conversations';
+import { useMessages, useSendMessageRest, useUploadImage, useGetPins, usePinMessage, useUnpinMessage } from '@/api/conversations';
 import { useConversations } from '@/api/conversations';
 import { useWebSocket } from '@/composables/useWebSocket';
 import { useJwtService } from '@/composables/useJwtService';
+import PinnedMessagesPanel from './PinnedMessagesPanel.vue';
 import type { IMessage } from '@/types/message';
 
 const route = useRoute();
@@ -157,6 +195,9 @@ const myId = computed(() => Number(jwt.value?.userId ?? 0));
 
 const { data: messagesPage, isLoading } = useMessages(conversationId);
 const { data: conversations } = useConversations();
+const { data: pins, isLoading: pinsLoading } = useGetPins(conversationId);
+const { mutate: pinMessage } = usePinMessage(conversationId);
+const { mutate: unpinMessage } = useUnpinMessage(conversationId);
 const { mutate: sendMessageRest } = useSendMessageRest(conversationId);
 const { mutate: uploadImage, isPending: isUploading } = useUploadImage();
 const {
@@ -172,8 +213,11 @@ const {
 } = useWebSocket();
 const queryClient = useQueryClient();
 
+const pinnedIds = computed(() => new Set((pins.value ?? []).map((p) => p.id)));
+
 const messageText = ref('');
 const showProfile = ref(false);
+const showPins = ref(false);
 const onlineUserIds = ref<number[]>([]);
 const replyTarget = ref<IMessage | null>(null);
 const editTarget = ref<IMessage | null>(null);
@@ -251,6 +295,20 @@ function handleWsDeleted({ messageId }: { messageId: number; conversationId: num
 function handleDelete(id: number) {
   const sent = wsDelete(id);
   if (!sent) toast.error('اتصال WebSocket برقرار نیست', { rtl: true });
+}
+
+function handlePin(messageId: number) {
+  pinMessage(messageId, {
+    onSuccess: () => toast.success('پیام سنجاق شد', { rtl: true }),
+    onError: () => toast.error('سنجاق کردن ناموفق بود', { rtl: true }),
+  });
+}
+
+function handleUnpin(messageId: number) {
+  unpinMessage(messageId, {
+    onSuccess: () => toast.success('پین برداشته شد', { rtl: true }),
+    onError: () => toast.error('برداشتن پین ناموفق بود', { rtl: true }),
+  });
 }
 
 function handleEditRequest(id: number) {
