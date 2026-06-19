@@ -42,15 +42,14 @@ export const useConversations = () => {
     });
 };
 
+
 export const useMessages = (conversationId: Ref<number> | number) => {
     const idRef = isRef(conversationId) ? conversationId : toRef(conversationId);
     return useQuery({
         queryKey: computed(() => ['messages', idRef.value]),
         queryFn: () =>
             api
-                .get<IMessage[]>(`/conversations/${idRef.value}/messages/`, {
-                    params: { limit: 30 },
-                })
+                .get<IMessage[]>(`/conversations/${idRef.value}/messages/`, { params: { limit: 10000 } })
                 .then((res) => (Array.isArray(res.data) ? res.data : (res.data as any).results ?? res.data).map(normalizeMsg)),
         enabled: computed(() => !!idRef.value),
     });
