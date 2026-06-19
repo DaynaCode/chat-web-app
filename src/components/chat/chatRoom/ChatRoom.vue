@@ -230,7 +230,11 @@ function addMessage(msg: IMessage) {
       : -1;
     if (optimisticIndex !== -1) {
       const updated = [...list];
-      updated[optimisticIndex] = msg;
+      const optimistic = list[optimisticIndex];
+      updated[optimisticIndex] = {
+        ...msg,
+        repliedTo: msg.repliedTo ?? optimistic.repliedTo ?? null,
+      };
       return updated;
     }
     if (list.some((m) => m.id === msg.id)) return list;
