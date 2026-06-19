@@ -42,38 +42,25 @@ export const useConversations = () => {
     });
 };
 
-function extractCursorFromUrl(url: string | null): string | null {
-    if (!url) return null;
-    try {
-        const u = new URL(url);
-        return u.searchParams.get('cursor') ?? u.searchParams.get('page') ?? null;
-    } catch {
-        return null;
-    }
-}
 
 export const useMessages = (conversationId: Ref<number> | number) => {
     const idRef = isRef(conversationId) ? conversationId : toRef(conversationId);
     return useInfiniteQuery({
         queryKey: computed(() => ['messages', idRef.value]),
-        queryFn: ({ pageParam }: { pageParam: string | null }) => {
-            const params: Record<string, unknown> = { limit: 30 };
-            if (pageParam) params.cursor = pageParam;
-            return api
-                .get<IMessage[] | IMessagesPage>(`/conversations/${idRef.value}/messages/`, { params })
+        queryFn: ({ pageParam }: { pageParam: number }) =>
+            api
+                .get<IMessage[]>(`/conversations/${idRef.value}/messages/`, {
+                    params: { limit: 30, offset: pageParam },
+                })
                 .then((res) => {
                     const raw = res.data as any;
-                    console.log('[messages API raw]', JSON.stringify(Array.isArray(raw) ? { isArray: true, count: raw.length } : { keys: Object.keys(raw), next: raw.next, next_cursor: raw.next_cursor, nextCursor: raw.nextCursor, count: raw.count }));
                     const results: IMessage[] = (Array.isArray(raw) ? raw : raw.results ?? []).map(normalizeMsg);
-                    // DRF can return next as full URL or as cursor string
-                    const nextRaw: string | null = raw.next ?? raw.next_cursor ?? raw.nextCursor ?? null;
-                    const nextCursor = nextRaw?.startsWith('http') ? extractCursorFromUrl(nextRaw) : nextRaw;
-                    console.log('[messages pagination]', { nextRaw, nextCursor, hasMore: !!nextCursor });
-                    return { results, nextCursor: nextCursor ?? null } as IMessagesPage;
-                });
-        },
-        initialPageParam: null as string | null,
-        getNextPageParam: (lastPage: IMessagesPage) => lastPage.nextCursor ?? null,
+                    // If we got fewer than 30 results there are no more older messages
+                    const hasMore = results.length === 30;
+                    return { results, nextCursor: hasMore ? String(pageParam + 30) : null } as IMessagesPage;
+                }),
+        initialPageParam: 0,
+        getNextPageParam: (lastPage: IMessagesPage) => lastPage.nextCursor ? Number(lastPage.nextCursor) : null,
         enabled: computed(() => !!idRef.value),
     });
 };
