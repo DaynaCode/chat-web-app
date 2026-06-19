@@ -323,6 +323,7 @@ function sendMsg() {
   }
 
   const repliedToId = replyTarget.value?.id ?? null;
+  const repliedToMsg = replyTarget.value ?? null;
   replyTarget.value = null;
   messageText.value = '';
 
@@ -350,7 +351,7 @@ function sendMsg() {
               createdAt: new Date().toISOString(),
               editedAt: null,
               isDeleted: false,
-              repliedTo: null,
+              repliedTo: repliedToMsg,
               clientMessageId,
             });
           }
@@ -379,7 +380,7 @@ function sendMsg() {
         createdAt: new Date().toISOString(),
         editedAt: null,
         isDeleted: false,
-        repliedTo: null,
+        repliedTo: repliedToMsg,
         clientMessageId,
       });
     }
